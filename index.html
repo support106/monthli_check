@@ -2,52 +2,75 @@
 <html dir="rtl" lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>טסט מערכת חיצונית</title>
+    <title>טסט כתיבה לגיליון</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px; background: #f4f4f9; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: inline-block; min-width: 300px; }
-        button { background: #4285F4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        #results { margin-top: 20px; text-align: right; font-size: 14px; }
-        .loading { color: orange; font-weight: bold; }
+        body { font-family: sans-serif; text-align: center; padding: 40px; background: #eef2f3; }
+        .form-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 300px; }
+        input, textarea, button { width: 100%; margin-bottom: 15px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:hover { background: #218838; }
+        .msg { font-size: 14px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h1>בדיקת חיבור ל-API 🚀</h1>
-    <p>הדף הזה רץ מחוץ לגוגל ומושך נתונים מהגיליון.</p>
+<div class="form-card">
+    <h2>דיווח טסט 📝</h2>
+    <p>שליחה מה-GitHub לגיליון גוגל</p>
     
-    <button onclick="fetchData()">משוך נתונים מהגיליון</button>
+    <input type="text" id="token" placeholder="מזהה מוסד (למשל: test-123)">
+    <select id="status">
+        <option value="תקין">תקין ✅</option>
+        <option value="לא תקין">לא תקין ❌</option>
+    </select>
+    <textarea id="notes" placeholder="הערות נוספות..."></textarea>
     
-    <div id="status"></div>
-    <div id="results"></div>
+    <button onclick="sendData()" id="submitBtn">שלח דיווח לגיליון</button>
+    <div id="responseMsg" class="msg"></div>
 </div>
 
 <script>
-    // הדבק כאן את הקישור שקיבלת מה-Deploy
-    const API_URL = "https://script.google.com/macros/s/AKfycbyDxAdfL9Lpu69UUTQbPfinmFC_QxwO7td5PXaxdC1nTSpi8bJnIaTf6_aEoOwFYCzrwA/exec";
+    const API_URL = "כאן_הדבק_את_הקישור_שלך";
 
-    async function fetchData() {
-        const statusDiv = document.getElementById('status');
-        const resultsDiv = document.getElementById('results');
+    async function sendData() {
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('responseMsg');
         
-        statusDiv.innerHTML = '<p class="loading">מתחבר לשרת גוגל...</p>';
-        resultsDiv.innerHTML = '';
+        // נתונים לשליחה
+        const payload = {
+            token: document.getElementById('token').value,
+            status: document.getElementById('status').value,
+            notes: document.getElementById('notes').value
+        };
+
+        btn.disabled = true;
+        btn.innerText = "שולח...";
+        msg.innerText = "";
 
         try {
-            const response = await fetch(API_URL);
-            const data = await response.json();
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
 
-            statusDiv.innerHTML = '<p style="color:green;">✅ החיבור הצליח!</p>';
-            
-            if (data.error) {
-                resultsDiv.innerHTML = "שגיאת שרת: " + data.error;
+            // בגלל mode: no-cors (אם יהיו בעיות) לפעמים לא נקבל תשובה, 
+            // אבל כאן אנחנו משתמשים ב-fetch רגיל מול Web App ציבורי
+            const result = await response.json();
+
+            if (result.result === "success") {
+                msg.style.color = "green";
+                msg.innerText = "הנתונים נשמרו בגיליון בהצלחה!";
             } else {
-                resultsDiv.innerHTML = "<strong>נתונים שנמצאו:</strong><pre>" + JSON.stringify(data, null, 2) + "</pre>";
+                msg.style.color = "red";
+                msg.innerText = "שגיאה: " + result.message;
             }
         } catch (error) {
-            statusDiv.innerHTML = '<p style="color:red;">❌ שגיאת תקשורת (CORS או URL שגוי)</p>';
             console.error(error);
+            msg.style.color = "blue";
+            msg.innerText = "הבקשה נשלחה (בדוק את הגיליון שלך).";
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "שלח דיווח לגיליון";
         }
     }
 </script>
