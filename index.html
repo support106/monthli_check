@@ -1,23 +1,56 @@
 <!DOCTYPE html>
-<html>
+<html dir="rtl" lang="he">
 <head>
-    <title>מערכת דיווח חיצונית</title>
+    <meta charset="UTF-8">
+    <title>טסט מערכת חיצונית</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; background: #f4f4f9; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: inline-block; min-width: 300px; }
+        button { background: #4285F4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        #results { margin-top: 20px; text-align: right; font-size: 14px; }
+        .loading { color: orange; font-weight: bold; }
+    </style>
 </head>
 <body>
-    <h1>שלום עולם - שרת חיצוני</h1>
-    <div id="data">טוען נתונים מהגיליון...</div>
 
-    <script>
-        const API_URL = "YOUR_APPS_SCRIPT_URL_HERE";
+<div class="card">
+    <h1>בדיקת חיבור ל-API 🚀</h1>
+    <p>הדף הזה רץ מחוץ לגוגל ומושך נתונים מהגיליון.</p>
+    
+    <button onclick="fetchData()">משוך נתונים מהגיליון</button>
+    
+    <div id="status"></div>
+    <div id="results"></div>
+</div>
 
-        // משיכת נתונים מה-API של גוגל
-        fetch(API_URL)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('data').innerText = "מצאתי " + data.length + " מוסדות בגיליון.";
-                console.log(data);
-            })
-            .catch(err => console.error("שגיאה:", err));
-    </script>
+<script>
+    // הדבק כאן את הקישור שקיבלת מה-Deploy
+    const API_URL = "https://script.google.com/macros/s/AKfycbyDxAdfL9Lpu69UUTQbPfinmFC_QxwO7td5PXaxdC1nTSpi8bJnIaTf6_aEoOwFYCzrwA/exec";
+
+    async function fetchData() {
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        
+        statusDiv.innerHTML = '<p class="loading">מתחבר לשרת גוגל...</p>';
+        resultsDiv.innerHTML = '';
+
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+
+            statusDiv.innerHTML = '<p style="color:green;">✅ החיבור הצליח!</p>';
+            
+            if (data.error) {
+                resultsDiv.innerHTML = "שגיאת שרת: " + data.error;
+            } else {
+                resultsDiv.innerHTML = "<strong>נתונים שנמצאו:</strong><pre>" + JSON.stringify(data, null, 2) + "</pre>";
+            }
+        } catch (error) {
+            statusDiv.innerHTML = '<p style="color:red;">❌ שגיאת תקשורת (CORS או URL שגוי)</p>';
+            console.error(error);
+        }
+    }
+</script>
+
 </body>
 </html>
