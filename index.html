@@ -2,100 +2,246 @@
 <html dir="rtl" lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>ניהול דיווחי בטיחות</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת דיווח בטיחות ותחזוקה</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
-        .filter-bar { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #ddd; }
-        tr:hover { background: #f9f9f9; }
-        .status-tag { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        :root {
+            --primary: #2180a8;
+            --primary-dark: #1a6b8a;
+            --success: #20a874;
+            --warning: #facc15;
+            --error: #c01f2f;
+            --bg: #f0f2f5;
+            --surface: #ffffff;
+            --text: #1f2121;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 15px;
+        }
+
+        .container { max-width: 600px; margin: 0 auto; }
+
+        .card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .inst-header { border-right: 6px solid var(--primary); }
+        .inst-header h2 { font-size: 1.4rem; color: var(--primary); }
+
+        /* Wizard Styles */
+        .wizard-item { text-align: center; display: none; }
+        .wizard-item.active { display: block; animation: slideLeft 0.3s ease-out; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 25px; }
+        .btn {
+            flex: 1; padding: 16px 10px; border: none; border-radius: 12px;
+            font-weight: bold; cursor: pointer; transition: all 0.2s; color: white;
+            font-size: 1rem; display: flex; align-items: center; justify-content: center; flex-direction: column;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-ok { background-color: var(--success); }
+        .btn-err { background-color: var(--error); }
+        .btn-na { background-color: #6b7280; }
+        
+        textarea {
+            width: 100%; margin-top: 15px; padding: 12px; border-radius: 8px;
+            border: 2px solid #ddd; font-family: inherit; display: none;
+        }
+
+        /* History Styles */
+        .history-item {
+            padding: 15px; border-radius: 12px; margin-bottom: 10px;
+            border: 1px solid rgba(0,0,0,0.05); cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .status-badge { font-size: 0.8rem; padding: 4px 8px; border-radius: 20px; background: rgba(255,255,255,0.5); }
+
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+        .modal-content { background: white; margin: 10% auto; padding: 25px; width: 90%; max-width: 500px; border-radius: 20px; max-height: 80vh; overflow-y: auto; position: relative; }
+        .close-modal { position: absolute; left: 15px; top: 15px; font-size: 24px; cursor: pointer; }
+
+        /* Helpers */
+        .loading-spinner { text-align: center; padding: 40px; color: var(--primary); }
+        .hidden { display: none; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideLeft { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        
+        .delete-icon { cursor: pointer; padding: 10px; opacity: 0.6; transition: 0.2s; }
+        .delete-icon:hover { opacity: 1; color: var(--error); }
     </style>
-    <style>
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
-    .modal-content { background: white; margin: 10% auto; padding: 20px; width: 90%; max-width: 500px; border-radius: 15px; max-height: 80vh; overflow-y: auto; }
-    .close { float: left; cursor: pointer; font-size: 24px; }
-    .delete-btn { color: var(--error); cursor: pointer; font-size: 18px; padding: 5px; }
-    .history-item { cursor: pointer; transition: transform 0.2s; position: relative; }
-    .history-item:hover { transform: scale(1.02); }
-</style>
 </head>
 <body>
 
-<h2>📈 לוח בקרה - דיווחי מוסדות</h2>
+<div class="container">
+    <div id="instCard" class="card inst-header">
+        <div id="instLoading">טוען פרטי מוסד...</div>
+        <div id="instContent" class="hidden">
+            <h2 id="instName"></h2>
+            <p id="instAddr" style="font-size: 0.9rem; color: #666;"></p>
+        </div>
+    </div>
 
-<div class="filter-bar">
-    <input type="text" id="filterInst" placeholder="סנן לפי מוסד..." oninput="renderTable()">
-    <input type="month" id="filterMonth" onchange="renderTable()">
-    <select id="filterStatus" onchange="renderTable()">
-        <option value="">כל הסטטוסים</option>
-        <option value="פתוח">פתוח</option>
-        <option value="סגור">סגור</option>
-    </select>
+    <div id="setupSection" class="card hidden">
+        <h3 style="margin-bottom: 15px;">דיווח חודשי חדש</h3>
+        <label for="reportMonth" style="display: block; margin-bottom: 8px; font-weight: bold;">בחר חודש דיווח:</label>
+        <input type="month" id="reportMonth" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px;">
+        <button onclick="startWizard()" class="btn" style="background: var(--primary); width: 100%;">התחל דיווח מודרך</button>
+    </div>
+
+    <div id="wizardSection" class="card hidden">
+        <div id="wizardProgress" style="font-size: 0.8rem; color: #666; margin-bottom: 15px; display: flex; justify-content: space-between;">
+            <span id="stepCount"></span>
+            <span id="stepName"></span>
+        </div>
+        <div id="wizardContainer"></div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-bottom: 15px;">דיווחים קודמים</h3>
+        <div id="historyList">
+            <div class="loading-spinner">טוען היסטוריה...</div>
+        </div>
+    </div>
 </div>
-
-<table id="reportsTable">
-    <thead>
-        <tr>
-            <th>תאריך</th>
-            <th>מוסד</th>
-            <th>חודש</th>
-            <th>מצב</th>
-            <th>סטטוס טיפול</th>
-        </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-</table>
-
-<script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzgN9zpn0-4mjW9273s1UKM6d8_SkKql9j73Z-VPeP2R4eQ6yi6e8g2NoybYlsOlbaQvA/exec";
-    let allReports = [];
-
-    async function loadReports() {
-        const res = await fetch(`${API_URL}?action=getReports`);
-        allReports = await res.json();
-        renderTable();
-    }
-
-    function renderTable() {
-        const instVal = document.getElementById('filterInst').value;
-        const monthVal = document.getElementById('filterMonth').value;
-        const statusVal = document.getElementById('filterStatus').value;
-        
-        const filtered = allReports.filter(r => {
-            return (!instVal || r['שם מוסד'].includes(instVal)) &&
-                   (!monthVal || r['חודש'] === monthVal) &&
-                   (!statusVal || r['סטטוס טיפול'] === statusVal);
-        });
-
-        document.getElementById('tableBody').innerHTML = filtered.map(r => `
-            <tr>
-                <td>${new Date(r['תאריך']).toLocaleDateString('he-IL')}</td>
-                <td>${r['שם מוסד']}</td>
-                <td>${r['חודש']}</td>
-                <td>${r['סטטוס כללי']}</td>
-                <td><span class="status-tag" style="background:${r['סטטוס טיפול'] === 'סגור' ? '#fef9c3' : '#fee2e2'}">${r['סטטוס טיפול']}</span></td>
-            </tr>
-        `).join('');
-    }
-
-    loadReports();
-</script>
 
 <div id="detailsModal" class="modal">
     <div class="modal-content">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <h2 id="modalTitle">פרטי דיווח</h2>
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <h2 id="modalTitle" style="color: var(--primary); margin-bottom: 15px;"></h2>
         <div id="modalBody"></div>
     </div>
 </div>
 
 <script>
-    // פונקציה לעיצוב חודש מתאריך ISO או חודש (YYYY-MM)
-    function formatMonthYear(dateStr) {
-        if (!dateStr) return '-';
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+    const API_URL = "https://script.google.com/macros/s/AKfycbzgN9zpn0-4mjW9273s1UKM6d8_SkKql9j73Z-VPeP2R4eQ6yi6e8g2NoybYlsOlbaQvA/exec";
+    const urlParams = new URLSearchParams(window.location.search);
+    const TOKEN = urlParams.get('id');
+
+    let institution = {};
+    let currentStep = 0;
+    let reportResults = [];
+
+    // רשימת הפריטים לדיווח
+    const checklistItems = [
+        { key: "yard", name: "ריצוף החצר" },
+        { key: "grass", name: "דשא סינטטי" },
+        { key: "drainage", name: "פתחי ניקוז" },
+        { key: "lighting", name: "תאורת חצר" },
+        { key: "fence", name: "גדרות והיקף" },
+        { key: "shade", name: "הצללות" },
+        { key: "play", name: "מתקני משחק" },
+        { key: "fire", name: "ציוד כיבוי אש" },
+        { key: "stairs", name: "מדרגות ומעקות" },
+        { key: "elec", name: "לוחות ושקעי חשמל" },
+        { key: "win", name: "חלונות ומגבילים" },
+        { key: "door", name: "דלתות ואביזרים" },
+        { key: "kitchen", name: "מטבח וחומרי ניקוי" }
+    ];
+
+    async function init() {
+        if (!TOKEN) {
+            document.body.innerHTML = "<div class='container'><div class='card' style='text-align:center;'><h2>שגיאה</h2><p>לא נמצא מזהה מוסד תקין בלינק.</p></div></div>";
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_URL}?action=getInstitution&token=${TOKEN}`);
+            const result = await res.json();
+            
+            if (result.success) {
+                institution = result.data;
+                document.getElementById('instLoading').classList.add('hidden');
+                document.getElementById('instContent').classList.remove('hidden');
+                document.getElementById('instName').innerText = institution['שם המוסד'];
+                document.getElementById('instAddr').innerText = institution['כתובת'] || '';
+                document.getElementById('setupSection').classList.remove('hidden');
+                loadHistory();
+            } else {
+                throw new Error("מוסד לא נמצא");
+            }
+        } catch (e) {
+            document.getElementById('instLoading').innerText = "שגיאה בטעינת נתוני המוסד.";
+        }
+    }
+
+    function startWizard() {
+        const month = document.getElementById('reportMonth').value;
+        if (!month) { alert("אנא בחר חודש דיווח"); return; }
+        
+        document.getElementById('setupSection').classList.add('hidden');
+        document.getElementById('wizardSection').classList.remove('hidden');
+        showStep();
+    }
+
+    function showStep() {
+        const item = checklistItems[currentStep];
+        document.getElementById('stepCount').innerText = `שלב ${currentStep + 1} מתוך ${checklistItems.length}`;
+        document.getElementById('stepName').innerText = item.name;
+
+        const container = document.getElementById('wizardContainer');
+        container.innerHTML = `
+            <div class="wizard-item active">
+                <h2 style="margin-bottom:20px;">האם ה${item.name} תקין?</h2>
+                <div class="btn-group">
+                    <button class="btn btn-ok" onclick="saveStep('תקין')">תקין<br>✅</button>
+                    <button class="btn btn-na" onclick="saveStep('לא קיים')">לא קיים<br>⚪</button>
+                    <button class="btn btn-err" onclick="showNotes()">תקול<br>❌</button>
+                </div>
+                <textarea id="notesField" placeholder="פרט את התקלה כאן..."></textarea>
+                <button id="nextBtn" class="btn hidden" style="background:var(--primary); margin-top:15px; width:100%" onclick="saveStep('לא תקין')">המשך לפריט הבא</button>
+            </div>
+        `;
+    }
+
+    function showNotes() {
+        document.getElementById('notesField').style.display = 'block';
+        document.getElementById('nextBtn').classList.remove('hidden');
+        document.getElementById('notesField').focus();
+    }
+
+    function saveStep(status) {
+        const notes = document.getElementById('notesField')?.value || "";
+        reportResults.push({ name: checklistItems[currentStep].name, status, notes });
+        
+        currentStep++;
+        if (currentStep < checklistItems.length) {
+            showStep();
+        } else {
+            submitFinalReport();
+        }
+    }
+
+    async function submitFinalReport() {
+        document.getElementById('wizardSection').innerHTML = "<div class='loading-spinner'>שולח דיווח לשרת...</div>";
+        
+        const hasIssue = reportResults.some(r => r.status === 'לא תקין');
+        const payload = {
+            token: TOKEN,
+            institutionName: institution['שם המוסד'],
+            month: document.getElementById('reportMonth').value,
+            overallStatus: hasIssue ? 'לא תקין' : 'תקין',
+            checklist: reportResults
+        };
+
+        try {
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+            location.reload();
+        } catch (e) {
+            alert("שגיאה בשליחה. נסה שוב.");
+        }
     }
 
     async function loadHistory() {
@@ -103,45 +249,82 @@
         const reports = await res.json();
         const container = document.getElementById('historyList');
         
+        if (reports.length === 0) {
+            container.innerHTML = "<p style='text-align:center; color:#999;'>אין דיווחים קודמים.</p>";
+            return;
+        }
+
         container.innerHTML = reports.map(r => {
-            let color = r['סטטוס כללי'] === 'תקין' ? '#dcfce7' : '#fee2e2';
-            if (r['סטטוס טיפול'] === 'סגור') color = '#fef9c3';
+            const dateStr = r['תאריך'];
+            const monthVal = r['חודש'] || r['חודש דיווח'];
+            const status = r['סטטוס כללי'];
+            const treatment = r['סטטוס טיפול'] || 'פתוח';
             
+            let bgColor = (status === 'תקין') ? '#dcfce7' : '#fee2e2';
+            if (treatment === 'סגור') bgColor = '#fef9c3';
+
             return `
-                <div class="report-item history-item" style="background:${color}" onclick="viewDetails('${encodeURIComponent(JSON.stringify(r))}')">
-                    <div style="display:flex; justify-content:space-between;">
-                        <strong>${formatMonthYear(r['חודש'] || r['חודש דיווח'])}</strong>
-                        <span class="delete-btn" onclick="deleteReport(event, '${r['תאריך']}')">🗑️</span>
+                <div class="history-item" style="background-color: ${bgColor}" onclick="viewDetails('${encodeURIComponent(JSON.stringify(r))}')">
+                    <div>
+                        <strong>${formatHebrewMonth(monthVal)}</strong><br>
+                        <small>הוגש ב: ${new Date(dateStr).toLocaleDateString('he-IL')}</small>
                     </div>
-                    <small>סטטוס: ${r['סטטוס כללי']} | הוגש ב: ${new Date(r['תאריך']).toLocaleDateString('he-IL')}</small>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span class="status-badge">${status}</span>
+                        <span class="delete-icon" onclick="deleteReport(event, '${dateStr}')">🗑️</span>
+                    </div>
                 </div>
             `;
         }).join('');
     }
 
-    function viewDetails(encodedData) {
-        const report = JSON.parse(decodeURIComponent(encodedData));
-        const checklist = JSON.parse(report['פירוט'] || '[]');
+    function formatHebrewMonth(val) {
+        if (!val) return "-";
+        const date = new Date(val + "-01");
+        return date.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+    }
+
+    function viewDetails(encoded) {
+        const report = JSON.parse(decodeURIComponent(encoded));
+        const list = JSON.parse(report['פירוט'] || '[]');
         
-        let html = `<h3>${formatMonthYear(report['חודש'])}</h3><hr>`;
-        checklist.forEach(item => {
-            const icon = item.status === 'תקין' ? '✅' : (item.status === 'לא תקין' ? '❌' : '⚪');
-            html += `<p><strong>${item.name}:</strong> ${icon} ${item.status} ${item.notes ? '<br><small>הערה: ' + item.notes + '</small>' : ''}</p>`;
+        document.getElementById('modalTitle').innerText = "פירוט דיווח - " + formatHebrewMonth(report['חודש']);
+        
+        let html = `<div style="margin-bottom:15px; font-size:0.9rem;"><strong>מצב כללי:</strong> ${report['סטטוס כללי']}</div>`;
+        list.forEach(item => {
+            const color = item.status === 'תקין' ? 'green' : (item.status === 'לא תקין' ? 'red' : 'gray');
+            html += `
+                <div style="margin-bottom:12px; border-bottom:1px solid #eee; padding-bottom:8px;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>${item.name}</span>
+                        <span style="color:${color}; font-weight:bold;">${item.status}</span>
+                    </div>
+                    ${item.notes ? `<div style="font-size:0.85rem; color:#666; margin-top:4px;">הערה: ${item.notes}</div>` : ''}
+                </div>
+            `;
         });
         
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('detailsModal').style.display = 'block';
     }
 
-    async function deleteReport(event, timestamp) {
-        event.stopPropagation(); // מונע פתיחת מודאל כשלוחצים על מחיקה
-        if (!confirm("האם אתה בטוח שברצונך למחוק את הדיווח?")) return;
+    async function deleteReport(e, timestamp) {
+        e.stopPropagation();
+        if (!confirm("למחוק את הדיווח לצמיתות?")) return;
         
-        await fetch(`${API_URL}?action=deleteReport&token=${TOKEN}&timestamp=${timestamp}`);
-        loadHistory();
+        try {
+            await fetch(`${API_URL}?action=deleteReport&token=${TOKEN}&timestamp=${timestamp}`);
+            loadHistory();
+        } catch (err) {
+            alert("שגיאה במחיקה");
+        }
     }
 
     function closeModal() { document.getElementById('detailsModal').style.display = 'none'; }
+    window.onclick = function(event) { if (event.target == document.getElementById('detailsModal')) closeModal(); }
+
+    init();
 </script>
+
 </body>
 </html>
