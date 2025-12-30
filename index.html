@@ -1,4 +1,17 @@
-<style>
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <title>ניהול דיווחי בטיחות</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        .filter-bar { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #ddd; }
+        tr:hover { background: #f9f9f9; }
+        .status-tag { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    </style>
+    <style>
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
     .modal-content { background: white; margin: 10% auto; padding: 20px; width: 90%; max-width: 500px; border-radius: 15px; max-height: 80vh; overflow-y: auto; }
     .close { float: left; cursor: pointer; font-size: 24px; }
@@ -6,6 +19,68 @@
     .history-item { cursor: pointer; transition: transform 0.2s; position: relative; }
     .history-item:hover { transform: scale(1.02); }
 </style>
+</head>
+<body>
+
+<h2>📈 לוח בקרה - דיווחי מוסדות</h2>
+
+<div class="filter-bar">
+    <input type="text" id="filterInst" placeholder="סנן לפי מוסד..." oninput="renderTable()">
+    <input type="month" id="filterMonth" onchange="renderTable()">
+    <select id="filterStatus" onchange="renderTable()">
+        <option value="">כל הסטטוסים</option>
+        <option value="פתוח">פתוח</option>
+        <option value="סגור">סגור</option>
+    </select>
+</div>
+
+<table id="reportsTable">
+    <thead>
+        <tr>
+            <th>תאריך</th>
+            <th>מוסד</th>
+            <th>חודש</th>
+            <th>מצב</th>
+            <th>סטטוס טיפול</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+</table>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzgN9zpn0-4mjW9273s1UKM6d8_SkKql9j73Z-VPeP2R4eQ6yi6e8g2NoybYlsOlbaQvA/exec";
+    let allReports = [];
+
+    async function loadReports() {
+        const res = await fetch(`${API_URL}?action=getReports`);
+        allReports = await res.json();
+        renderTable();
+    }
+
+    function renderTable() {
+        const instVal = document.getElementById('filterInst').value;
+        const monthVal = document.getElementById('filterMonth').value;
+        const statusVal = document.getElementById('filterStatus').value;
+        
+        const filtered = allReports.filter(r => {
+            return (!instVal || r['שם מוסד'].includes(instVal)) &&
+                   (!monthVal || r['חודש'] === monthVal) &&
+                   (!statusVal || r['סטטוס טיפול'] === statusVal);
+        });
+
+        document.getElementById('tableBody').innerHTML = filtered.map(r => `
+            <tr>
+                <td>${new Date(r['תאריך']).toLocaleDateString('he-IL')}</td>
+                <td>${r['שם מוסד']}</td>
+                <td>${r['חודש']}</td>
+                <td>${r['סטטוס כללי']}</td>
+                <td><span class="status-tag" style="background:${r['סטטוס טיפול'] === 'סגור' ? '#fef9c3' : '#fee2e2'}">${r['סטטוס טיפול']}</span></td>
+            </tr>
+        `).join('');
+    }
+
+    loadReports();
+</script>
 
 <div id="detailsModal" class="modal">
     <div class="modal-content">
@@ -68,3 +143,5 @@
 
     function closeModal() { document.getElementById('detailsModal').style.display = 'none'; }
 </script>
+</body>
+</html>
