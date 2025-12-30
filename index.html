@@ -2,78 +2,155 @@
 <html dir="rtl" lang="he">
 <head>
     <meta charset="UTF-8">
-    <title>טסט כתיבה לגיליון</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דיווח תחזוקה מוסדי</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 40px; background: #eef2f3; }
-        .form-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 300px; }
-        input, textarea, button { width: 100%; margin-bottom: 15px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:hover { background: #218838; }
-        .msg { font-size: 14px; margin-top: 10px; }
+        :root { --primary: #2180a8; --success: #20a874; --error: #c01f2f; --bg: #f5f5f5; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .inst-header { border-right: 5px solid var(--primary); padding-right: 15px; }
+        .wizard-item { display: none; text-align: center; animation: fadeIn 0.3s; }
+        .wizard-item.active { display: block; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+        .btn { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; min-width: 80px; }
+        .btn-ok { background: var(--success); }
+        .btn-err { background: var(--error); }
+        .btn-na { background: #626664; }
+        textarea { width: 100%; margin-top: 10px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; display: none; }
+        .report-item { padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ddd; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<div class="form-card">
-    <h2>דיווח טסט 📝</h2>
-    <p>שליחה מה-GitHub לגיליון גוגל</p>
-    
-    <input type="text" id="token" placeholder="מזהה מוסד (למשל: test-123)">
-    <select id="status">
-        <option value="תקין">תקין ✅</option>
-        <option value="לא תקין">לא תקין ❌</option>
-    </select>
-    <textarea id="notes" placeholder="הערות נוספות..."></textarea>
-    
-    <button onclick="sendData()" id="submitBtn">שלח דיווח לגיליון</button>
-    <div id="responseMsg" class="msg"></div>
+<div id="instInfo" class="card inst-header">טוען פרטי מוסד...</div>
+
+<div id="setupSection" class="card">
+    <h3>דיווח חדש</h3>
+    <label>בחר חודש דיווח:</label>
+    <input type="month" id="reportMonth" style="width:100%; padding:10px; margin:10px 0;">
+    <button onclick="startWizard()" class="btn" style="background:var(--primary); width:100%">התחל דיווח</button>
+</div>
+
+<div id="wizardSection" class="card" style="display:none;">
+    <div id="progress" style="font-size: 12px; color: #666; margin-bottom: 10px;"></div>
+    <div id="wizardContainer"></div>
+</div>
+
+<div class="card">
+    <h3>היסטוריית דיווחים</h3>
+    <div id="historyList">טוען היסטוריה...</div>
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyDxAdfL9Lpu69UUTQbPfinmFC_QxwO7td5PXaxdC1nTSpi8bJnIaTf6_aEoOwFYCzrwA/exec";
+    const API_URL = "YOUR_GAS_URL";
+    const urlParams = new URLSearchParams(window.location.search);
+    const TOKEN = urlParams.get('id');
+    
+    let institution = {};
+    let currentStep = 0;
+    let checklistResults = [];
+    
+    const items = [
+        { key: "yard", name: "ריצוף חצר" },
+        { key: "fence", name: "גדרות" },
+        { key: "fire", name: "ציוד כיבוי" },
+        { key: "electricity", name: "לוחות חשמל" }
+        // הוסף כאן את כל הפריטים שלך
+    ];
 
-    async function sendData() {
-        const btn = document.getElementById('submitBtn');
-        const msg = document.getElementById('responseMsg');
+    async function init() {
+        if (!TOKEN) { document.body.innerHTML = "<h1>שגיאה: לינק לא תקין</h1>"; return; }
         
-        // נתונים לשליחה
-        const payload = {
-            token: document.getElementById('token').value,
-            status: document.getElementById('status').value,
-            notes: document.getElementById('notes').value
-        };
-
-        btn.disabled = true;
-        btn.innerText = "שולח...";
-        msg.innerText = "";
-
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-
-            // בגלל mode: no-cors (אם יהיו בעיות) לפעמים לא נקבל תשובה, 
-            // אבל כאן אנחנו משתמשים ב-fetch רגיל מול Web App ציבורי
-            const result = await response.json();
-
-            if (result.result === "success") {
-                msg.style.color = "green";
-                msg.innerText = "הנתונים נשמרו בגיליון בהצלחה!";
-            } else {
-                msg.style.color = "red";
-                msg.innerText = "שגיאה: " + result.message;
-            }
-        } catch (error) {
-            console.error(error);
-            msg.style.color = "blue";
-            msg.innerText = "הבקשה נשלחה (בדוק את הגיליון שלך).";
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "שלח דיווח לגיליון";
+        const res = await fetch(`${API_URL}?action=getInstitution&token=${TOKEN}`);
+        const result = await res.json();
+        
+        if (result.success) {
+            institution = result.data;
+            document.getElementById('instInfo').innerHTML = `<h2>${institution['שם המוסד']}</h2><p>${institution['כתובת']}</p>`;
+            loadHistory();
         }
     }
-</script>
 
+    function startWizard() {
+        if (!document.getElementById('reportMonth').value) { alert("בחר חודש"); return; }
+        document.getElementById('setupSection').style.display = 'none';
+        document.getElementById('wizardSection').style.display = 'block';
+        showStep();
+    }
+
+    function showStep() {
+        const container = document.getElementById('wizardContainer');
+        const item = items[currentStep];
+        document.getElementById('progress').innerText = `פריט ${currentStep + 1} מתוך ${items.length}`;
+        
+        container.innerHTML = `
+            <div class="wizard-item active">
+                <h2>${item.name}</h2>
+                <div class="btn-group">
+                    <button class="btn btn-ok" onclick="saveStep('תקין')">תקין ✅</button>
+                    <button class="btn btn-err" onclick="toggleNotes()">תקול ❌</button>
+                    <button class="btn btn-na" onclick="saveStep('לא קיים')">לא קיים</button>
+                </div>
+                <textarea id="notesField" placeholder="פרט את התקלה..."></textarea>
+                <button id="nextBtn" class="btn" style="background:var(--primary); display:none; margin-top:10px;" onclick="saveStep('לא תקין')">המשך לבא</button>
+            </div>
+        `;
+    }
+
+    function toggleNotes() {
+        document.getElementById('notesField').style.display = 'block';
+        document.getElementById('nextBtn').style.display = 'block';
+    }
+
+    async function saveStep(status) {
+        const notes = document.getElementById('notesField')?.value || "";
+        checklistResults.push({ name: items[currentStep].name, status, notes });
+        
+        currentStep++;
+        if (currentStep < items.length) {
+            showStep();
+        } else {
+            submitReport();
+        }
+    }
+
+    async function submitReport() {
+        document.getElementById('wizardSection').innerHTML = "<h3>שולח דיווח...</h3>";
+        const hasFault = checklistResults.some(r => r.status === 'לא תקין');
+        
+        const payload = {
+            token: TOKEN,
+            institutionName: institution['שם המוסד'],
+            month: document.getElementById('reportMonth').value,
+            overallStatus: hasFault ? 'לא תקין' : 'תקין',
+            checklist: checklistResults
+        };
+
+        await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+        location.reload();
+    }
+
+    async function loadHistory() {
+        const res = await fetch(`${API_URL}?action=getReports&token=${TOKEN}`);
+        const reports = await res.json();
+        const container = document.getElementById('historyList');
+        
+        container.innerHTML = reports.map(r => {
+            let color = '#dcfce7'; // ירוק
+            if (r['סטטוס טיפול'] === 'סגור') color = '#fef9c3'; // צהוב
+            else if (r['סטטוס כללי'] === 'לא תקין') color = '#fee2e2'; // אדום
+            
+            return `
+                <div class="report-item" style="background:${color}">
+                    <strong>חודש: ${r['חודש']}</strong> | סטטוס: ${r['סטטוס כללי']}<br>
+                    <small>הוגש ב: ${new Date(r['תאריך']).toLocaleDateString('he-IL')}</small>
+                </div>
+            `;
+        }).join('');
+    }
+
+    init();
+</script>
 </body>
 </html>
