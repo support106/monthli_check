@@ -1,77 +1,321 @@
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
-    <meta charset="UTF-8">
-    <title>ניהול דיווחי בטיחות</title>
-    <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
-        .filter-bar { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #ddd; }
-        tr:hover { background: #f9f9f9; }
-        .status-tag { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ניהול דיווחי בטיחות</title>
+  <style>
+    body { font-family: sans-serif; background: #f0f2f5; padding: 20px; margin:0; }
+    h2 { margin-top:0; }
+    .bar { background:#fff; padding:14px; border-radius:10px; margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    input, select, button { padding:10px; border-radius:8px; border:1px solid #ddd; font-size:14px; }
+    button { cursor:pointer; border:none; background:#2180a8; color:#fff; font-weight:700; }
+    button.secondary { background:#64748b; }
+    table { width:100%; border-collapse:collapse; background:#fff; border-radius:10px; overflow:hidden; }
+    th, td { padding:12px; text-align:right; border-bottom:1px solid #eee; vertical-align:top; }
+    th { background:#fafafa; font-size:13px; color:#555; }
+    tr:hover { background:#f9fafb; }
+    .tag { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+    .tag-open { background:#fee2e2; }
+    .tag-closed { background:#fef9c3; }
+    .tag-ok { background:#dcfce7; }
+    .tag-bad { background:#fee2e2; }
+    .muted { color:#666; font-size:12px; }
+    .row-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .drawer {
+      position:fixed; top:0; left:0; height:100vh; width:min(520px, 92vw);
+      background:#fff; box-shadow: 0 10px 35px rgba(0,0,0,.2);
+      transform: translateX(-110%); transition: .2s ease;
+      padding:18px; overflow:auto; z-index:50;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer h3 { margin-top:0; }
+    .drawer textarea { width:100%; min-height:120px; padding:10px; border:1px solid #ddd; border-radius:10px; font-family:inherit; }
+    .drawer .top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:40;
+      display:none;
+    }
+    .overlay.show { display:block; }
+    .msg { margin: 10px 0; padding: 10px; border-radius: 10px; background:#fff; }
+    .msg.err { border: 1px solid #fecaca; }
+  </style>
 </head>
 <body>
 
 <h2>📈 לוח בקרה - דיווחי מוסדות</h2>
 
-<div class="filter-bar">
-    <input type="text" id="filterInst" placeholder="סנן לפי מוסד..." oninput="renderTable()">
-    <input type="month" id="filterMonth" onchange="renderTable()">
-    <select id="filterStatus" onchange="renderTable()">
-        <option value="">כל הסטטוסים</option>
-        <option value="פתוח">פתוח</option>
-        <option value="סגור">סגור</option>
-    </select>
+<div class="bar">
+  <input type="text" id="filterInst" placeholder="סנן לפי מוסד..." />
+  <input type="month" id="filterMonth" />
+  <select id="filterHandling">
+    <option value="">כל סטטוס טיפול</option>
+    <option value="פתוח">פתוח</option>
+    <option value="סגור">סגור</option>
+  </select>
+  <select id="filterOverall">
+    <option value="">כל סטטוס כללי</option>
+    <option value="תקין">תקין</option>
+    <option value="לא תקין">לא תקין</option>
+  </select>
+  <button id="btnReload">רענן</button>
+  <span class="muted" id="countLabel"></span>
 </div>
 
-<table id="reportsTable">
-    <thead>
-        <tr>
-            <th>תאריך</th>
-            <th>מוסד</th>
-            <th>חודש</th>
-            <th>מצב</th>
-            <th>סטטוס טיפול</th>
-        </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
+<div id="message" class="msg" style="display:none;"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>תאריך</th>
+      <th>מוסד</th>
+      <th>חודש</th>
+      <th>סטטוס כללי</th>
+      <th>סטטוס טיפול</th>
+      <th>פעולות</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
 </table>
 
+<div id="overlay" class="overlay"></div>
+<div id="drawer" class="drawer" aria-hidden="true">
+  <div class="top">
+    <h3>פרטי דיווח</h3>
+    <button class="secondary" id="btnClose">סגור</button>
+  </div>
+  <div class="muted" id="drawerMeta"></div>
+
+  <h4 style="margin-bottom:6px;">פירוט (Checklist)</h4>
+  <div id="drawerChecklist" class="msg"></div>
+
+  <h4 style="margin-bottom:6px;">הערות הנהלה</h4>
+  <textarea id="managementNotes" placeholder="כתוב הערות הנהלה..."></textarea>
+
+  <h4 style="margin:14px 0 6px;">סטטוס טיפול</h4>
+  <select id="handlingStatus" style="width:100%;">
+    <option value="פתוח">פתוח</option>
+    <option value="סגור">סגור</option>
+  </select>
+
+  <div class="row-actions" style="margin-top:14px;">
+    <button id="btnSave">שמור</button>
+    <button class="secondary" id="btnCancel">ביטול</button>
+  </div>
+</div>
+
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbykQ2G6imUM11ubxLX_8SJcglg8SB8HG3vZk5pbCNBF6ueNORvHznhTQg03nNMvZVZlVQ/exec";
-    let allReports = [];
+  // חשוב: לשים כאן את כתובת ה-Web App של Apps Script
+  const API_URL = "https://script.google.com/macros/s/AKfycbyQzzyIQgQeUQzMuFATMawQzzjDqH9-WGxpCgORVGRc5s5cRgrWYHkA9osVt-Urd9Ew/exec";
 
-    async function loadReports() {
-        const res = await fetch(`${API_URL}?action=getReports`);
-        allReports = await res.json();
-        renderTable();
+  let allReports = [];
+  let selected = null; // הדיווח שנפתח במגירה
+
+  const els = {
+    filterInst: document.getElementById('filterInst'),
+    filterMonth: document.getElementById('filterMonth'),
+    filterHandling: document.getElementById('filterHandling'),
+    filterOverall: document.getElementById('filterOverall'),
+    tableBody: document.getElementById('tableBody'),
+    btnReload: document.getElementById('btnReload'),
+    countLabel: document.getElementById('countLabel'),
+    msg: document.getElementById('message'),
+
+    overlay: document.getElementById('overlay'),
+    drawer: document.getElementById('drawer'),
+    btnClose: document.getElementById('btnClose'),
+    btnCancel: document.getElementById('btnCancel'),
+    btnSave: document.getElementById('btnSave'),
+    drawerMeta: document.getElementById('drawerMeta'),
+    drawerChecklist: document.getElementById('drawerChecklist'),
+    managementNotes: document.getElementById('managementNotes'),
+    handlingStatus: document.getElementById('handlingStatus'),
+  };
+
+  function showMsg(text, isErr=false) {
+    els.msg.style.display = 'block';
+    els.msg.textContent = text;
+    els.msg.className = 'msg' + (isErr ? ' err' : '');
+    if (!isErr) setTimeout(() => { els.msg.style.display='none'; }, 2500);
+  }
+
+  function safeDate(d) {
+    const dt = new Date(d);
+    return isNaN(dt) ? '' : dt.toLocaleDateString('he-IL');
+  }
+
+  function tagHandling(val) {
+    const cls = (val === 'סגור') ? 'tag-closed' : 'tag-open';
+    return `<span class="tag ${cls}">${val || ''}</span>`;
+  }
+
+  function tagOverall(val) {
+    const cls = (val === 'לא תקין') ? 'tag-bad' : 'tag-ok';
+    return `<span class="tag ${cls}">${val || ''}</span>`;
+  }
+
+  function parseChecklist(raw) {
+    try {
+      const arr = JSON.parse(raw || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function loadReports() {
+    try {
+      const res = await fetch(`${API_URL}?action=getReports`);
+      const data = await res.json();
+
+      if (data && data.success === false) {
+        showMsg(`שגיאה: ${data.code || data.msg || 'לא ידוע'}`, true);
+        return;
+      }
+
+      allReports = Array.isArray(data) ? data : [];
+      renderTable();
+    } catch (e) {
+      showMsg('שגיאה בטעינת נתונים (בדוק API_URL / פריסה ב-GAS)', true);
+    }
+  }
+
+  function getFiltered() {
+    const instVal = els.filterInst.value.trim();
+    const monthVal = els.filterMonth.value;
+    const handlingVal = els.filterHandling.value;
+    const overallVal = els.filterOverall.value;
+
+    return allReports.filter(r => {
+      const inst = String(r['שם מוסד'] || '');
+      const month = String(r['חודש'] || '');
+      const handling = String(r['סטטוס טיפול'] || '');
+      const overall = String(r['סטטוס כללי'] || '');
+
+      return (!instVal || inst.includes(instVal)) &&
+             (!monthVal || month === monthVal) &&
+             (!handlingVal || handling === handlingVal) &&
+             (!overallVal || overall === overallVal);
+    });
+  }
+
+  function renderTable() {
+    const filtered = getFiltered();
+    els.countLabel.textContent = `סה״כ: ${filtered.length}`;
+
+    els.tableBody.innerHTML = filtered.map((r, idx) => `
+      <tr>
+        <td>${safeDate(r['תאריך'])}</td>
+        <td>${r['שם מוסד'] || ''}<div class="muted">${r.Token ? 'Token: ' + r.Token : ''}</div></td>
+        <td>${r['חודש'] || ''}</td>
+        <td>${tagOverall(r['סטטוס כללי'])}</td>
+        <td>${tagHandling(r['סטטוס טיפול'])}</td>
+        <td>
+          <div class="row-actions">
+            <button onclick="openReport(${idx})">פתח</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // שים לב: idx הוא אינדקס בתוך filtered, אז נשלוף ממנו
+  window.openReport = function(indexInFiltered) {
+    const filtered = getFiltered();
+    selected = filtered[indexInFiltered];
+    if (!selected) return;
+
+    const checklist = parseChecklist(selected['פירוט']);
+    els.drawerMeta.innerHTML = `
+      <div>מוסד: <b>${selected['שם מוסד'] || ''}</b></div>
+      <div>חודש: <b>${selected['חודש'] || ''}</b> | הוגש: <b>${safeDate(selected['תאריך'])}</b></div>
+      <div>סטטוס: ${tagOverall(selected['סטטוס כללי'])} | טיפול: ${tagHandling(selected['סטטוס טיפול'])}</div>
+    `;
+
+    els.drawerChecklist.innerHTML = checklist.length
+      ? checklist.map(x => {
+          const st = x.status || '';
+          const nm = x.name || '';
+          const nt = x.notes ? `<div class="muted">הערה: ${escapeHtml(x.notes)}</div>` : '';
+          return `<div style="padding:8px 0; border-bottom:1px solid #eee;">
+                    <b>${escapeHtml(nm)}</b> — ${escapeHtml(st)}
+                    ${nt}
+                  </div>`;
+        }).join('')
+      : '<div class="muted">אין פירוט</div>';
+
+    els.managementNotes.value = selected['הערות הנהלה'] || '';
+    els.handlingStatus.value = selected['סטטוס טיפול'] || 'פתוח';
+
+    openDrawer(true);
+  }
+
+  function openDrawer(open) {
+    els.overlay.classList.toggle('show', open);
+    els.drawer.classList.toggle('open', open);
+    els.drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+
+  function escapeHtml(s) {
+    return String(s || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  async function saveReportUpdate() {
+    if (!selected) return;
+
+    // בשביל updateReport צריך rowNumber — אם תרצה לאפשר עדכון אמיתי,
+    // צריך שהבקאנד יחזיר _rowNumber (הוא מחזיר), אבל כאן ב-JSON שלך זה עדיין לא מוצג בטבלה.
+    // אם _rowNumber לא קיים אצלך בפועל, פשוט לא ננסה לעדכן.
+    const rowNumber = selected._rowNumber;
+    if (!rowNumber) {
+      showMsg('אין rowNumber לעדכון (תן לי צילום/דוגמת JSON מהבקאנד ואסדר)', true);
+      return;
     }
 
-    function renderTable() {
-        const instVal = document.getElementById('filterInst').value;
-        const monthVal = document.getElementById('filterMonth').value;
-        const statusVal = document.getElementById('filterStatus').value;
-        
-        const filtered = allReports.filter(r => {
-            return (!instVal || r['שם מוסד'].includes(instVal)) &&
-                   (!monthVal || r['חודש'] === monthVal) &&
-                   (!statusVal || r['סטטוס טיפול'] === statusVal);
-        });
+    const payload = {
+      action: 'updateReport',
+      rowNumber,
+      managementNotes: els.managementNotes.value,
+      handlingStatus: els.handlingStatus.value
+    };
 
-        document.getElementById('tableBody').innerHTML = filtered.map(r => `
-            <tr>
-                <td>${new Date(r['תאריך']).toLocaleDateString('he-IL')}</td>
-                <td>${r['שם מוסד']}</td>
-                <td>${r['חודש']}</td>
-                <td>${r['סטטוס כללי']}</td>
-                <td><span class="status-tag" style="background:${r['סטטוס טיפול'] === 'סגור' ? '#fef9c3' : '#fee2e2'}">${r['סטטוס טיפול']}</span></td>
-            </tr>
-        `).join('');
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const out = await res.json();
+      if (out && out.success === false) {
+        showMsg(`שגיאה בעדכון: ${out.code || 'לא ידוע'}`, true);
+        return;
+      }
+      showMsg('נשמר ✅');
+      openDrawer(false);
+      await loadReports();
+    } catch (e) {
+      showMsg('שגיאה בשמירה (בדוק פריסה/הרשאות/CORS)', true);
     }
+  }
 
-    loadReports();
+  // events
+  els.btnReload.addEventListener('click', loadReports);
+  [els.filterInst, els.filterMonth, els.filterHandling, els.filterOverall].forEach(el => {
+    el.addEventListener('input', renderTable);
+    el.addEventListener('change', renderTable);
+  });
+
+  els.overlay.addEventListener('click', () => openDrawer(false));
+  els.btnClose.addEventListener('click', () => openDrawer(false));
+  els.btnCancel.addEventListener('click', () => openDrawer(false));
+  els.btnSave.addEventListener('click', saveReportUpdate);
+
+  loadReports();
 </script>
 </body>
 </html>
