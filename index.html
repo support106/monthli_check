@@ -47,7 +47,6 @@
       notes: document.getElementById('notes').value.trim()
     };
 
-    // ולידציה מינימלית (רק כדי לא לשלוח ריק)
     if (!payload.token) {
       setMsg("נא להזין סמל מוסד.", "red");
       return;
@@ -60,30 +59,21 @@
     try {
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=utf-8"
-        },
+        // בכוונה בלי headers → כדי להימנע מ-preflight
         body: JSON.stringify(payload)
       });
 
-      // אם משהו לא תקין, נקרא עדיין את ה-body כדי לקבל הודעת שגיאה מהשרת
       const text = await response.text();
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch {
-        throw new Error("תשובה לא תקינה מהשרת: " + text);
+      let result = null;
+      try { result = JSON.parse(text); } catch {}
+
+      if (result?.result === "success") {
+        setMsg("הנתונים נשמרו בגיליון בהצלחה!", "green");
+        document.getElementById('notes').value = "";
+      } else {
+        // אם מסיבה כלשהי לא הצלחנו לקרוא JSON (או נחסם), עדיין נציג הודעה סבירה
+        setMsg(result?.message ? ("שגיאה: " + result.message) : "הבקשה נשלחה. אם לא התקבלה תשובה – בדוק בגיליון.", "blue");
       }
-
-      if (!response.ok || result?.result !== "success") {
-        throw new Error(result?.message || ("HTTP " + response.status));
-      }
-
-      setMsg("הנתונים נשמרו בגיליון בהצלחה!", "green");
-
-      // איפוס שדות (אופציונלי)
-      document.getElementById('notes').value = "";
-      // document.getElementById('token').value = "";
 
     } catch (err) {
       console.error(err);
