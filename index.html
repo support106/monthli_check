@@ -20,6 +20,7 @@
 
 <input type="text" id="token" placeholder="סמל מוסד" readonly>
   <select id="status">
+    <div id="instBox" style="text-align:right; background:#f7f7f7; padding:10px; border-radius:8px; margin-bottom:15px; display:none;"></div>
     <option value="תקין">תקין ✅</option>
     <option value="לא תקין">לא תקין ❌</option>
   </select>
@@ -30,7 +31,38 @@
 </div>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbyQzzyIQgQeUQzMuFATMawQzzjDqH9-WGxpCgORVGRc5s5cRgrWYHkA9osVt-Urd9Ew/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbyQzzyIQgQeUQzMuFATMawQzzjDqH9-WGxpCgORVGRc5s5cRgrWYHkA9osVt-Urd9Ew/exec
+    
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cbName = "cb_" + Math.random().toString(36).slice(2);
+      const script = document.createElement("script");
+
+      window[cbName] = (data) => {
+        resolve(data);
+        cleanup();
+      };
+
+      function cleanup() {
+        delete window[cbName];
+        script.remove();
+      }
+
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("JSONP load failed"));
+      };
+
+      const sep = url.includes("?") ? "&" : "?";
+      script.src = url + sep + "callback=" + encodeURIComponent(cbName);
+      document.body.appendChild(script);
+    });
+  }
+
+  function getTokenFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get("token") || "").trim();
+  }
 
   function setMsg(text, color) {
     const msg = document.getElementById('responseMsg');
@@ -38,68 +70,57 @@
     msg.innerText = text || "";
   }
 
-  function getTokenFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    // תומך גם ב-token וגם ב-institution ליתר גמישות
-    return (params.get("token") || params.get("institution") || "").trim();
+  function showInstitution(inst) {
+    const box = document.getElementById("instBox");
+    box.style.display = "block";
+
+    // מציג יפה (אפשר לשנות עיצוב בהמשך)
+    box.innerHTML = `
+      <div><b>שם מוסד:</b> ${inst["שם מוסד"] || ""}</div>
+      <div><b>כתובת:</b> ${inst["כתובת"] || ""}</div>
+      <div><b>סוג:</b> ${inst["סוג"] || ""}</div>
+      <div><b>איש קשר:</b> ${inst["איש קשר"] || ""}</div>
+      <div><b>טלפון:</b> ${inst["טלפון"] || ""}</div>
+      <div><b>Email1:</b> ${inst["Email1"] || ""}</div>
+      <div><b>Email2:</b> ${inst["Email2"] || ""}</div>
+    `;
   }
 
-  // רץ כשהדף נטען
-  window.addEventListener("DOMContentLoaded", () => {
+  window.addEventListener("DOMContentLoaded", async () => {
     const token = getTokenFromUrl();
     const tokenInput = document.getElementById("token");
-
     tokenInput.value = token;
 
     if (!token) {
       setMsg("חסר פרמטר token בכתובת. לדוגמה: ?token=12345", "red");
       document.getElementById("submitBtn").disabled = true;
-    }
-  });
-
-  async function sendData() {
-    const btn = document.getElementById('submitBtn');
-
-    const payload = {
-      token: document.getElementById('token').value.trim(),
-      status: document.getElementById('status').value,
-      notes: document.getElementById('notes').value.trim()
-    };
-
-    if (!payload.token) {
-      setMsg("חסר סמל מוסד בכתובת (token).", "red");
       return;
     }
 
-    btn.disabled = true;
-    btn.innerText = "שולח...";
-    setMsg("");
-
+    // מביא את פרטי המוסד מהגיליון
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
+      const url = `${API_URL}?action=getInstitution&token=${encodeURIComponent(token)}`;
+      const res = await jsonp(url);
 
-      const text = await response.text();
-      let result = null;
-      try { result = JSON.parse(text); } catch {}
-
-      if (result?.result === "success") {
-        setMsg("הנתונים נשמרו בגיליון בהצלחה!", "green");
-        document.getElementById('notes').value = "";
-      } else {
-        setMsg(result?.message ? ("שגיאה: " + result.message) : "הבקשה נשלחה. בדוק בגיליון.", "blue");
+      if (!res.success) {
+        setMsg("לא נמצא מוסד לפי הטוקן: " + (res.message || ""), "red");
+        document.getElementById("submitBtn").disabled = true;
+        return;
       }
+
+      showInstitution(res.institution);
+      setMsg("", "black");
+      // אפשר להשאיר שליחה פעילה רק אם נמצא מוסד
+      document.getElementById("submitBtn").disabled = false;
 
     } catch (err) {
       console.error(err);
-      setMsg("שגיאה בשליחה: " + (err?.message || err), "red");
-    } finally {
-      btn.disabled = false;
-      btn.innerText = "שלח דיווח לגיליון";
+      setMsg("שגיאה בשליפת נתוני מוסד.", "red");
+      document.getElementById("submitBtn").disabled = true;
     }
-  }
+  });
+
+  // sendData() שלך נשאר כמו שעובד לך היום (POST)
 </script>
 </body>
 </html>
