@@ -1,78 +1,98 @@
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
-    <meta charset="UTF-8">
-    <title>טסט כתיבה לגיליון</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 40px; background: #eef2f3; }
-        .form-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 300px; }
-        input, textarea, button { width: 100%; margin-bottom: 15px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:hover { background: #218838; }
-        .msg { font-size: 14px; margin-top: 10px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>טסט כתיבה לגיליון</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 40px; background: #eef2f3; }
+    .form-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 320px; }
+    input, textarea, select, button { width: 100%; margin-bottom: 15px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+    button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
+    button:hover { background: #218838; }
+    .msg { font-size: 14px; margin-top: 10px; min-height: 18px; }
+  </style>
 </head>
 <body>
 
 <div class="form-card">
-    <h2>דיווח טסט 📝</h2>
-    <p>שליחה מה-GitHub לגיליון גוגל</p>
-    
-    <input type="text" id="token" placeholder="מזהה מוסד (למשל: test-123)">
-    <select id="status">
-        <option value="תקין">תקין ✅</option>
-        <option value="לא תקין">לא תקין ❌</option>
-    </select>
-    <textarea id="notes" placeholder="הערות נוספות..."></textarea>
-    
-    <button onclick="sendData()" id="submitBtn">שלח דיווח לגיליון</button>
-    <div id="responseMsg" class="msg"></div>
+  <h2>דיווח טסט 📝</h2>
+  <p>שליחה מה-GitHub לגיליון גוגל</p>
+
+  <input type="text" id="token" placeholder="סמל מוסד (למשל: 12345)">
+  <select id="status">
+    <option value="תקין">תקין ✅</option>
+    <option value="לא תקין">לא תקין ❌</option>
+  </select>
+  <textarea id="notes" placeholder="הערות נוספות..."></textarea>
+
+  <button onclick="sendData()" id="submitBtn">שלח דיווח לגיליון</button>
+  <div id="responseMsg" class="msg"></div>
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyQzzyIQgQeUQzMuFATMawQzzjDqH9-WGxpCgORVGRc5s5cRgrWYHkA9osVt-Urd9Ew/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbyQzzyIQgQeUQzMuFATMawQzzjDqH9-WGxpCgORVGRc5s5cRgrWYHkA9osVt-Urd9Ew/exec";
 
-    async function sendData() {
-        const btn = document.getElementById('submitBtn');
-        const msg = document.getElementById('responseMsg');
-        
-        // נתונים לשליחה
-        const payload = {
-            token: document.getElementById('token').value,
-            status: document.getElementById('status').value,
-            notes: document.getElementById('notes').value
-        };
+  function setMsg(text, color) {
+    const msg = document.getElementById('responseMsg');
+    msg.style.color = color || "black";
+    msg.innerText = text || "";
+  }
 
-        btn.disabled = true;
-        btn.innerText = "שולח...";
-        msg.innerText = "";
+  async function sendData() {
+    const btn = document.getElementById('submitBtn');
 
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
+    const payload = {
+      token: document.getElementById('token').value.trim(),
+      status: document.getElementById('status').value,
+      notes: document.getElementById('notes').value.trim()
+    };
 
-            // בגלל mode: no-cors (אם יהיו בעיות) לפעמים לא נקבל תשובה, 
-            // אבל כאן אנחנו משתמשים ב-fetch רגיל מול Web App ציבורי
-            const result = await response.json();
-
-            if (result.result === "success") {
-                msg.style.color = "green";
-                msg.innerText = "הנתונים נשמרו בגיליון בהצלחה!";
-            } else {
-                msg.style.color = "red";
-                msg.innerText = "שגיאה: " + result.message;
-            }
-        } catch (error) {
-            console.error(error);
-            msg.style.color = "blue";
-            msg.innerText = "הבקשה נשלחה (בדוק את הגיליון שלך).";
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "שלח דיווח לגיליון";
-        }
+    // ולידציה מינימלית (רק כדי לא לשלוח ריק)
+    if (!payload.token) {
+      setMsg("נא להזין סמל מוסד.", "red");
+      return;
     }
+
+    btn.disabled = true;
+    btn.innerText = "שולח...";
+    setMsg("");
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      // אם משהו לא תקין, נקרא עדיין את ה-body כדי לקבל הודעת שגיאה מהשרת
+      const text = await response.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error("תשובה לא תקינה מהשרת: " + text);
+      }
+
+      if (!response.ok || result?.result !== "success") {
+        throw new Error(result?.message || ("HTTP " + response.status));
+      }
+
+      setMsg("הנתונים נשמרו בגיליון בהצלחה!", "green");
+
+      // איפוס שדות (אופציונלי)
+      document.getElementById('notes').value = "";
+      // document.getElementById('token').value = "";
+
+    } catch (err) {
+      console.error(err);
+      setMsg("שגיאה בשליחה: " + (err?.message || err), "red");
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "שלח דיווח לגיליון";
+    }
+  }
 </script>
 
 </body>
