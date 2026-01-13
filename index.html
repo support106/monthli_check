@@ -67,6 +67,27 @@ function jsonp(url) {
   function showInstitution(inst) {
     const box = document.getElementById("instBox");
     box.style.display = "block";
+    // להביא דיווחים קודמים
+try {
+  const reportsUrl = `${API_URL}?action=getReports&token=${encodeURIComponent(token)}&limit=50`;
+  const repRes = await jsonp(reportsUrl);
+  if (repRes && repRes.success) {
+    showReports(repRes.reports);
+  } else {
+    // לא חוסם, רק מציג הודעה כללית
+    showReports([]);
+  }
+} catch (e) {
+  console.error(e);
+  // לא מפילים את המסך בגלל זה
+  showReports([]);
+}
+
+
+    <div id="reportsBox" style="text-align:right; background:#fff; padding:10px; border-radius:8px; margin-top:15px; display:none;">
+  <div style="font-weight:bold; margin-bottom:8px;">דיווחים קודמים</div>
+  <div id="reportsContent"></div>
+</div>
 
     // מציג יפה (אפשר לשנות עיצוב בהמשך)
     box.innerHTML = `
@@ -133,6 +154,61 @@ function jsonp(url) {
       document.getElementById("submitBtn").disabled = true;
     }
   });
+
+  function formatDate(d) {
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return String(d || '');
+  return dt.toLocaleString('he-IL'); // תאריך ושעה בעברית
+}
+
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function showReports(reports) {
+  const box = document.getElementById("reportsBox");
+  const content = document.getElementById("reportsContent");
+  if (!box || !content) return;
+
+  box.style.display = "block";
+
+  if (!reports || reports.length === 0) {
+    content.innerHTML = `<div style="color:#666;">אין דיווחים קודמים למוסד זה.</div>`;
+    return;
+  }
+
+  // תצוגה בטבלה קומפקטית
+  const rowsHtml = reports.map(r => `
+    <tr>
+      <td>${escapeHtml(formatDate(r["תאריך"]))}</td>
+      <td>${escapeHtml(r["חודש"] || "")}</td>
+      <td>${escapeHtml(r["סטטוס כללי"] || "")}</td>
+      <td>${escapeHtml(r["סטטוס טיפול"] || "")}</td>
+      <td>${escapeHtml(r["פירוט"] || "")}</td>
+    </tr>
+  `).join("");
+
+  content.innerHTML = `
+    <div style="overflow:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead>
+          <tr>
+            <th style="border-bottom:1px solid #ddd; padding:6px;">תאריך</th>
+            <th style="border-bottom:1px solid #ddd; padding:6px;">חודש</th>
+            <th style="border-bottom:1px solid #ddd; padding:6px;">סטטוס כללי</th>
+            <th style="border-bottom:1px solid #ddd; padding:6px;">סטטוס טיפול</th>
+            <th style="border-bottom:1px solid #ddd; padding:6px;">פירוט</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 
   async function sendData() {
     const btn = document.getElementById('submitBtn');
