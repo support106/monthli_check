@@ -18,7 +18,7 @@
   <h2>דיווח טסט 📝</h2>
   <p>שליחה מה-GitHub לגיליון גוגל</p>
 
-  <input type="text" id="token" placeholder="סמל מוסד (למשל: 12345)">
+<input type="text" id="token" placeholder="סמל מוסד" readonly>
   <select id="status">
     <option value="תקין">תקין ✅</option>
     <option value="לא תקין">לא תקין ❌</option>
@@ -38,6 +38,25 @@
     msg.innerText = text || "";
   }
 
+  function getTokenFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    // תומך גם ב-token וגם ב-institution ליתר גמישות
+    return (params.get("token") || params.get("institution") || "").trim();
+  }
+
+  // רץ כשהדף נטען
+  window.addEventListener("DOMContentLoaded", () => {
+    const token = getTokenFromUrl();
+    const tokenInput = document.getElementById("token");
+
+    tokenInput.value = token;
+
+    if (!token) {
+      setMsg("חסר פרמטר token בכתובת. לדוגמה: ?token=12345", "red");
+      document.getElementById("submitBtn").disabled = true;
+    }
+  });
+
   async function sendData() {
     const btn = document.getElementById('submitBtn');
 
@@ -48,7 +67,7 @@
     };
 
     if (!payload.token) {
-      setMsg("נא להזין סמל מוסד.", "red");
+      setMsg("חסר סמל מוסד בכתובת (token).", "red");
       return;
     }
 
@@ -59,7 +78,6 @@
     try {
       const response = await fetch(API_URL, {
         method: "POST",
-        // בכוונה בלי headers → כדי להימנע מ-preflight
         body: JSON.stringify(payload)
       });
 
@@ -71,8 +89,7 @@
         setMsg("הנתונים נשמרו בגיליון בהצלחה!", "green");
         document.getElementById('notes').value = "";
       } else {
-        // אם מסיבה כלשהי לא הצלחנו לקרוא JSON (או נחסם), עדיין נציג הודעה סבירה
-        setMsg(result?.message ? ("שגיאה: " + result.message) : "הבקשה נשלחה. אם לא התקבלה תשובה – בדוק בגיליון.", "blue");
+        setMsg(result?.message ? ("שגיאה: " + result.message) : "הבקשה נשלחה. בדוק בגיליון.", "blue");
       }
 
     } catch (err) {
@@ -84,6 +101,5 @@
     }
   }
 </script>
-
 </body>
 </html>
