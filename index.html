@@ -2,6 +2,7 @@
 <html dir="rtl" lang="he">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>דיווח בטיחות</title>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 40px; background: #eef2f3; }
@@ -9,7 +10,14 @@
     input, textarea, select, button { width: 100%; margin-bottom: 15px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
     button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
     button:hover { background: #218838; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
     .msg { font-size: 14px; margin-top: 10px; min-height: 18px; }
+    .section { text-align:right; background:#f7f7f7; padding:10px; border-radius:8px; margin: 10px 0 15px; display:none; }
+    .reports { text-align:right; background:#fff; padding:10px; border-radius:8px; margin-top:15px; display:none; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { padding:6px; border-bottom:1px solid #eee; vertical-align: top; }
+    th { border-bottom:1px solid #ddd; }
+    .muted { color:#666; }
   </style>
 </head>
 <body>
@@ -18,9 +26,9 @@
   <h2>דיווח טסט 📝</h2>
   <p>שליחה מה-GitHub לגיליון גוגל</p>
 
-  <input type="text" id="token" placeholder="סמל מוסד" readonly>
+  <input type="text" id="token" placeholder="סמל מוסד" readonly />
 
-  <div id="instBox" style="text-align:right; background:#f7f7f7; padding:10px; border-radius:8px; margin-bottom:15px; display:none;"></div>
+  <div id="instBox" class="section"></div>
 
   <select id="status">
     <option value="תקין">תקין ✅</option>
@@ -32,18 +40,19 @@
   <button onclick="sendData()" id="submitBtn">שלח דיווח לגיליון</button>
   <div id="responseMsg" class="msg"></div>
 
-  <div id="reportsBox" style="text-align:right; background:#fff; padding:10px; border-radius:8px; margin-top:15px; display:none;">
+  <div id="reportsBox" class="reports">
     <div style="font-weight:bold; margin-bottom:8px;">דיווחים קודמים</div>
     <div id="reportsContent"></div>
   </div>
 </div>
 
 <script>
+  // ====== CONFIG ======
   const API_URL = "https://script.google.com/macros/s/AKfycbyQzzyIQgQeUQzMuFATMawQzzjDqH9-WGxpCgORVGRc5s5cRgrWYHkA9osVt-Urd9Ew/exec";
 
-  // --- helpers ---
+  // ====== HELPERS ======
   function setMsg(text, color) {
-    const msg = document.getElementById('responseMsg');
+    const msg = document.getElementById("responseMsg");
     msg.style.color = color || "black";
     msg.innerText = text || "";
   }
@@ -53,39 +62,35 @@
     return (params.get("token") || "").trim();
   }
 
-  function jsonp(url) {
-    return new Promise((resolve, reject) => {
-      const cbName = "cb_" + Math.random().toString(36).slice(2);
-      const script = document.createElement("script");
-
-      window[cbName] = (data) => { resolve(data); cleanup(); };
-
-      function cleanup() {
-        try { delete window[cbName]; } catch {}
-        script.remove();
-      }
-
-      script.onerror = () => { cleanup(); reject(new Error("JSONP load failed")); };
-
-      const sep = url.includes("?") ? "&" : "?";
-      script.src = url + sep + "callback=" + encodeURIComponent(cbName);
-      document.body.appendChild(script);
-    });
-  }
-
-  function formatDate(d) {
-    const dt = new Date(d);
-    if (isNaN(dt.getTime())) return String(d || '');
-    return dt.toLocaleString('he-IL');
-  }
-
   function escapeHtml(s) {
-    return String(s ?? '')
+    return String(s ?? "")
       .replace(/&/g, "&amp;").replace(/</g, "&lt;")
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
 
+  function formatDate(d) {
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d || "");
+    return dt.toLocaleString("he-IL");
+  }
+
+  // POST helper (אנחנו נמנעים מ-headers כדי להימנע מ-preflight)
+  async function apiPost(payload) {
+    const resp = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    const text = await resp.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { success: false, result: "error", message: "Bad JSON from server", raw: text };
+    }
+  }
+
+  // ====== RENDER ======
   function showInstitution(inst) {
     const box = document.getElementById("instBox");
     box.style.display = "block";
@@ -103,35 +108,34 @@
   function showReports(reports) {
     const box = document.getElementById("reportsBox");
     const content = document.getElementById("reportsContent");
-    if (!box || !content) return;
 
     box.style.display = "block";
 
     if (!reports || reports.length === 0) {
-      content.innerHTML = `<div style="color:#666;">אין דיווחים קודמים למוסד זה.</div>`;
+      content.innerHTML = `<div class="muted">אין דיווחים קודמים למוסד זה.</div>`;
       return;
     }
 
     const rowsHtml = reports.map(r => `
       <tr>
-        <td style="border-bottom:1px solid #eee; padding:6px;">${escapeHtml(formatDate(r["תאריך"]))}</td>
-        <td style="border-bottom:1px solid #eee; padding:6px;">${escapeHtml(r["חודש"] || "")}</td>
-        <td style="border-bottom:1px solid #eee; padding:6px;">${escapeHtml(r["סטטוס כללי"] || "")}</td>
-        <td style="border-bottom:1px solid #eee; padding:6px;">${escapeHtml(r["סטטוס טיפול"] || "")}</td>
-        <td style="border-bottom:1px solid #eee; padding:6px;">${escapeHtml(r["פירוט"] || "")}</td>
+        <td>${escapeHtml(formatDate(r["תאריך"]))}</td>
+        <td>${escapeHtml(r["חודש"] || "")}</td>
+        <td>${escapeHtml(r["סטטוס כללי"] || "")}</td>
+        <td>${escapeHtml(r["סטטוס טיפול"] || "")}</td>
+        <td>${escapeHtml(r["פירוט"] || "")}</td>
       </tr>
     `).join("");
 
     content.innerHTML = `
       <div style="overflow:auto;">
-        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <table>
           <thead>
             <tr>
-              <th style="border-bottom:1px solid #ddd; padding:6px;">תאריך</th>
-              <th style="border-bottom:1px solid #ddd; padding:6px;">חודש</th>
-              <th style="border-bottom:1px solid #ddd; padding:6px;">סטטוס כללי</th>
-              <th style="border-bottom:1px solid #ddd; padding:6px;">סטטוס טיפול</th>
-              <th style="border-bottom:1px solid #ddd; padding:6px;">פירוט</th>
+              <th>תאריך</th>
+              <th>חודש</th>
+              <th>סטטוס כללי</th>
+              <th>סטטוס טיפול</th>
+              <th>פירוט</th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
@@ -140,26 +144,22 @@
     `;
   }
 
+  // ====== LOAD DATA ======
   async function loadInstitutionAndReports(token) {
-    // 1) מוסד
-    const instUrl = `${API_URL}?action=getInstitution&token=${encodeURIComponent(token)}`;
-    const instRes = await jsonp(instUrl);
-
+    // מוסד
+    const instRes = await apiPost({ action: "getInstitution", token });
     if (!instRes || !instRes.success) {
       throw new Error(instRes?.message || "Institution not found");
     }
-
     showInstitution(instRes.institution);
 
-    // 2) דיווחים
-    const reportsUrl = `${API_URL}?action=getReports&token=${encodeURIComponent(token)}&limit=50`;
-    const repRes = await jsonp(reportsUrl);
-
+    // דיווחים
+    const repRes = await apiPost({ action: "getReports", token, limit: 50 });
     if (repRes && repRes.success) showReports(repRes.reports);
     else showReports([]);
   }
 
-  // --- init ---
+  // ====== INIT ======
   window.addEventListener("DOMContentLoaded", async () => {
     const token = getTokenFromUrl();
     document.getElementById("token").value = token;
@@ -182,15 +182,16 @@
     }
   });
 
-  // --- submit ---
+  // ====== SUBMIT ======
   async function sendData() {
-    const btn = document.getElementById('submitBtn');
-    const token = document.getElementById('token').value.trim();
+    const btn = document.getElementById("submitBtn");
+    const token = document.getElementById("token").value.trim();
 
     const payload = {
+      // בלי action => הבאקאנד מבין שזה "דיווח"
       token,
-      status: document.getElementById('status').value,
-      notes: document.getElementById('notes').value.trim()
+      status: document.getElementById("status").value,
+      notes: document.getElementById("notes").value.trim()
     };
 
     if (!token) {
@@ -203,26 +204,17 @@
     setMsg("");
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-
-      const text = await response.text();
-      let result = null;
-      try { result = JSON.parse(text); } catch {}
+      const result = await apiPost(payload);
 
       if (result?.result === "success") {
         setMsg("הנתונים נשמרו בגיליון בהצלחה!", "green");
-        document.getElementById('notes').value = "";
+        document.getElementById("notes").value = "";
 
-        // רענון דיווחים אחרי שליחה
+        // רענון רשימת דיווחים אחרי שליחה
         await loadInstitutionAndReports(token);
-
       } else {
         setMsg(result?.message ? ("שגיאה: " + result.message) : "הבקשה נשלחה. בדוק בגיליון.", "blue");
       }
-
     } catch (err) {
       console.error(err);
       setMsg("שגיאה בשליחה: " + (err?.message || err), "red");
