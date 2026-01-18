@@ -2,320 +2,294 @@
 <html dir="rtl" lang="he">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ניהול דיווחי בטיחות</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ניהול דיווחים</title>
   <style>
-    body { font-family: sans-serif; background: #f0f2f5; padding: 20px; margin:0; }
-    h2 { margin-top:0; }
-    .bar { background:#fff; padding:14px; border-radius:10px; margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    input, select, button { padding:10px; border-radius:8px; border:1px solid #ddd; font-size:14px; }
-    button { cursor:pointer; border:none; background:#2180a8; color:#fff; font-weight:700; }
-    button.secondary { background:#64748b; }
-    table { width:100%; border-collapse:collapse; background:#fff; border-radius:10px; overflow:hidden; }
-    th, td { padding:12px; text-align:right; border-bottom:1px solid #eee; vertical-align:top; }
-    th { background:#fafafa; font-size:13px; color:#555; }
-    tr:hover { background:#f9fafb; }
-    .tag { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; }
-    .tag-open { background:#fee2e2; }
-    .tag-closed { background:#fef9c3; }
-    .tag-ok { background:#dcfce7; }
-    .tag-bad { background:#fee2e2; }
-    .muted { color:#666; font-size:12px; }
-    .row-actions { display:flex; gap:8px; flex-wrap:wrap; }
-    .drawer {
-      position:fixed; top:0; left:0; height:100vh; width:min(520px, 92vw);
-      background:#fff; box-shadow: 0 10px 35px rgba(0,0,0,.2);
-      transform: translateX(-110%); transition: .2s ease;
-      padding:18px; overflow:auto; z-index:50;
-    }
-    .drawer.open { transform: translateX(0); }
-    .drawer h3 { margin-top:0; }
-    .drawer textarea { width:100%; min-height:120px; padding:10px; border:1px solid #ddd; border-radius:10px; font-family:inherit; }
-    .drawer .top { display:flex; justify-content:space-between; align-items:center; gap:12px; }
-    .overlay {
-      position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:40;
-      display:none;
-    }
-    .overlay.show { display:block; }
-    .msg { margin: 10px 0; padding: 10px; border-radius: 10px; background:#fff; }
-    .msg.err { border: 1px solid #fecaca; }
+    body { font-family: sans-serif; background:#eef2f3; padding: 18px; }
+    .card { background:#fff; border-radius:12px; padding:16px; box-shadow:0 4px 15px rgba(0,0,0,0.08); max-width: 980px; margin: 0 auto 14px; }
+    h2 { margin: 0 0 10px; }
+    input, select, textarea, button { width:100%; box-sizing:border-box; padding:10px; border-radius:10px; border:1px solid #ccc; }
+    textarea { resize: vertical; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .btn { border:0; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:800; }
+    .btn-primary { background:#1f7ae0; color:#fff; }
+    .btn-secondary { background:#f1f3f5; color:#222; border:1px solid #ddd; }
+    .btn-danger { background:#d9534f; color:#fff; }
+    .btn:disabled { opacity:0.6; cursor:not-allowed; }
+    .msg { min-height:18px; font-size:13px; margin-top:8px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { padding:8px 6px; border-bottom:1px solid #eee; vertical-align:top; }
+    th { border-bottom:1px solid #ddd; white-space:nowrap; }
+    .muted { color:#666; }
+    .pill { display:inline-block; padding:3px 8px; border-radius:999px; background:#f1f5f9; border:1px solid #e2e8f0; font-size:12px; }
+    .click { cursor:pointer; }
+    .details { background:#0b1220; color:#e5e7eb; padding:12px; border-radius:12px; overflow:auto; max-height: 360px; }
   </style>
 </head>
 <body>
 
-<h2>📈 לוח בקרה - דיווחי מוסדות</h2>
+<div class="card">
+  <h2>דף ניהול</h2>
 
-<div class="bar">
-  <input type="text" id="filterInst" placeholder="סנן לפי מוסד..." />
-  <input type="month" id="filterMonth" />
-  <select id="filterHandling">
-    <option value="">כל סטטוס טיפול</option>
-    <option value="פתוח">פתוח</option>
-    <option value="סגור">סגור</option>
-  </select>
-  <select id="filterOverall">
-    <option value="">כל סטטוס כללי</option>
-    <option value="תקין">תקין</option>
-    <option value="לא תקין">לא תקין</option>
-  </select>
-  <button id="btnReload">רענן</button>
-  <span class="muted" id="countLabel"></span>
+  <div class="grid2">
+    <div>
+      <label class="muted">API URL</label>
+      <input id="apiUrl" value="https://script.google.com/macros/s/AKfycbyQzzyIQgQeUQzMuFATMawQzzjDqH9-WGxpCgORVGRc5s5cRgrWYHkA9osVt-Urd9Ew/exec" />
+    </div>
+    <div>
+      <label class="muted">מפתח ניהול (ADMIN_KEY)</label>
+      <input id="adminKey" placeholder="הדבק מפתח ניהול" />
+    </div>
+  </div>
+
+  <div class="msg" id="topMsg"></div>
 </div>
 
-<div id="message" class="msg" style="display:none;"></div>
-
-<table>
-  <thead>
-    <tr>
-      <th>תאריך</th>
-      <th>מוסד</th>
-      <th>חודש</th>
-      <th>סטטוס כללי</th>
-      <th>סטטוס טיפול</th>
-      <th>פעולות</th>
-    </tr>
-  </thead>
-  <tbody id="tableBody"></tbody>
-</table>
-
-<div id="overlay" class="overlay"></div>
-<div id="drawer" class="drawer" aria-hidden="true">
-  <div class="top">
-    <h3>פרטי דיווח</h3>
-    <button class="secondary" id="btnClose">סגור</button>
+<div class="card">
+  <div class="grid">
+    <div>
+      <label class="muted">חודש (YYYY-MM)</label>
+      <input id="month" placeholder="למשל 2026-01" />
+    </div>
+    <div>
+      <label class="muted">טוקן</label>
+      <input id="token" placeholder="למשל 12345" />
+    </div>
+    <div>
+      <label class="muted">סטטוס טיפול</label>
+      <select id="statusTreatment">
+        <option value="">הכל</option>
+        <option value="חדש">חדש</option>
+        <option value="בטיפול">בטיפול</option>
+        <option value="טופל">טופל</option>
+      </select>
+    </div>
   </div>
-  <div class="muted" id="drawerMeta"></div>
 
-  <h4 style="margin-bottom:6px;">פירוט (Checklist)</h4>
-  <div id="drawerChecklist" class="msg"></div>
+  <div class="row" style="margin-top:10px;">
+    <button class="btn btn-primary" id="searchBtn">חפש</button>
+    <button class="btn btn-secondary" id="clearBtn">נקה פילטרים</button>
+    <span class="muted" id="countLabel"></span>
+  </div>
 
-  <h4 style="margin-bottom:6px;">הערות הנהלה</h4>
-  <textarea id="managementNotes" placeholder="כתוב הערות הנהלה..."></textarea>
+  <div class="msg" id="searchMsg"></div>
 
-  <h4 style="margin:14px 0 6px;">סטטוס טיפול</h4>
-  <select id="handlingStatus" style="width:100%;">
-    <option value="פתוח">פתוח</option>
-    <option value="סגור">סגור</option>
-  </select>
+  <div style="overflow:auto; margin-top:10px;">
+    <table>
+      <thead>
+        <tr>
+          <th>תאריך</th>
+          <th>מוסד</th>
+          <th>טוקן</th>
+          <th>חודש</th>
+          <th>סטטוס כללי</th>
+          <th>סטטוס טיפול</th>
+          <th>סיכום</th>
+        </tr>
+      </thead>
+      <tbody id="reportsTbody">
+        <tr><td colspan="7" class="muted">בצע חיפוש כדי לראות תוצאות.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
-  <div class="row-actions" style="margin-top:14px;">
-    <button id="btnSave">שמור</button>
-    <button class="secondary" id="btnCancel">ביטול</button>
+<div class="card" id="detailsCard" style="display:none;">
+  <h2 style="margin-bottom:8px;">פרטי דיווח</h2>
+  <div class="grid2">
+    <div>
+      <div class="muted">ReportId</div>
+      <div id="dReportId" class="pill"></div>
+    </div>
+    <div>
+      <div class="muted">סטטוס טיפול</div>
+      <select id="dStatusTreatment">
+        <option value="חדש">חדש</option>
+        <option value="בטיפול">בטיפול</option>
+        <option value="טופל">טופל</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="margin-top:10px;">
+    <div class="muted">הערות הנהלה</div>
+    <textarea id="dNotesMgmt" rows="3" placeholder="הערות פנימיות..."></textarea>
+  </div>
+
+  <div class="row" style="margin-top:10px;">
+    <button class="btn btn-primary" id="saveBtn">שמור עדכון</button>
+    <button class="btn btn-secondary" id="closeDetailsBtn">סגור</button>
+    <div class="msg" id="detailsMsg" style="flex:1;"></div>
+  </div>
+
+  <div style="margin-top:10px;">
+    <div class="muted">פירוט (JSON / שאלות)</div>
+    <pre class="details" id="dJson"></pre>
   </div>
 </div>
 
 <script>
-  // חשוב: לשים כאן את כתובת ה-Web App של Apps Script
-  const API_URL = "YOUR_GAS_URL";
+  function $(id){ return document.getElementById(id); }
 
-  let allReports = [];
-  let selected = null; // הדיווח שנפתח במגירה
-
-  const els = {
-    filterInst: document.getElementById('filterInst'),
-    filterMonth: document.getElementById('filterMonth'),
-    filterHandling: document.getElementById('filterHandling'),
-    filterOverall: document.getElementById('filterOverall'),
-    tableBody: document.getElementById('tableBody'),
-    btnReload: document.getElementById('btnReload'),
-    countLabel: document.getElementById('countLabel'),
-    msg: document.getElementById('message'),
-
-    overlay: document.getElementById('overlay'),
-    drawer: document.getElementById('drawer'),
-    btnClose: document.getElementById('btnClose'),
-    btnCancel: document.getElementById('btnCancel'),
-    btnSave: document.getElementById('btnSave'),
-    drawerMeta: document.getElementById('drawerMeta'),
-    drawerChecklist: document.getElementById('drawerChecklist'),
-    managementNotes: document.getElementById('managementNotes'),
-    handlingStatus: document.getElementById('handlingStatus'),
-  };
-
-  function showMsg(text, isErr=false) {
-    els.msg.style.display = 'block';
-    els.msg.textContent = text;
-    els.msg.className = 'msg' + (isErr ? ' err' : '');
-    if (!isErr) setTimeout(() => { els.msg.style.display='none'; }, 2500);
+  function setMsg(el, text, color){
+    el.style.color = color || "black";
+    el.textContent = text || "";
   }
 
-  function safeDate(d) {
-    const dt = new Date(d);
-    return isNaN(dt) ? '' : dt.toLocaleDateString('he-IL');
+  async function apiPost(payload){
+    const url = $("apiUrl").value.trim();
+    const resp = await fetch(url, { method:"POST", body: JSON.stringify(payload) });
+    const text = await resp.text();
+    try { return JSON.parse(text); } catch { return { success:false, result:"error", message:"Bad JSON", raw:text }; }
   }
 
-  function tagHandling(val) {
-    const cls = (val === 'סגור') ? 'tag-closed' : 'tag-open';
-    return `<span class="tag ${cls}">${val || ''}</span>`;
+  function getAuth(){
+    const adminKey = $("adminKey").value.trim();
+    if (!adminKey) throw new Error("חסר מפתח ניהול");
+    return { adminKey };
   }
 
-  function tagOverall(val) {
-    const cls = (val === 'לא תקין') ? 'tag-bad' : 'tag-ok';
-    return `<span class="tag ${cls}">${val || ''}</span>`;
-  }
-
-  function parseChecklist(raw) {
-    try {
-      const arr = JSON.parse(raw || '[]');
-      return Array.isArray(arr) ? arr : [];
-    } catch {
-      return [];
-    }
-  }
-
-  async function loadReports() {
-    try {
-      const res = await fetch(`${API_URL}?action=getReports`);
-      const data = await res.json();
-
-      if (data && data.success === false) {
-        showMsg(`שגיאה: ${data.code || data.msg || 'לא ידוע'}`, true);
-        return;
-      }
-
-      allReports = Array.isArray(data) ? data : [];
-      renderTable();
-    } catch (e) {
-      showMsg('שגיאה בטעינת נתונים (בדוק API_URL / פריסה ב-GAS)', true);
-    }
-  }
-
-  function getFiltered() {
-    const instVal = els.filterInst.value.trim();
-    const monthVal = els.filterMonth.value;
-    const handlingVal = els.filterHandling.value;
-    const overallVal = els.filterOverall.value;
-
-    return allReports.filter(r => {
-      const inst = String(r['שם מוסד'] || '');
-      const month = String(r['חודש'] || '');
-      const handling = String(r['סטטוס טיפול'] || '');
-      const overall = String(r['סטטוס כללי'] || '');
-
-      return (!instVal || inst.includes(instVal)) &&
-             (!monthVal || month === monthVal) &&
-             (!handlingVal || handling === handlingVal) &&
-             (!overallVal || overall === overallVal);
-    });
-  }
-
-  function renderTable() {
-    const filtered = getFiltered();
-    els.countLabel.textContent = `סה״כ: ${filtered.length}`;
-
-    els.tableBody.innerHTML = filtered.map((r, idx) => `
-      <tr>
-        <td>${safeDate(r['תאריך'])}</td>
-        <td>${r['שם מוסד'] || ''}<div class="muted">${r.Token ? 'Token: ' + r.Token : ''}</div></td>
-        <td>${r['חודש'] || ''}</td>
-        <td>${tagOverall(r['סטטוס כללי'])}</td>
-        <td>${tagHandling(r['סטטוס טיפול'])}</td>
-        <td>
-          <div class="row-actions">
-            <button onclick="openReport(${idx})">פתח</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
-  }
-
-  // שים לב: idx הוא אינדקס בתוך filtered, אז נשלוף ממנו
-  window.openReport = function(indexInFiltered) {
-    const filtered = getFiltered();
-    selected = filtered[indexInFiltered];
-    if (!selected) return;
-
-    const checklist = parseChecklist(selected['פירוט']);
-    els.drawerMeta.innerHTML = `
-      <div>מוסד: <b>${selected['שם מוסד'] || ''}</b></div>
-      <div>חודש: <b>${selected['חודש'] || ''}</b> | הוגש: <b>${safeDate(selected['תאריך'])}</b></div>
-      <div>סטטוס: ${tagOverall(selected['סטטוס כללי'])} | טיפול: ${tagHandling(selected['סטטוס טיפול'])}</div>
-    `;
-
-    els.drawerChecklist.innerHTML = checklist.length
-      ? checklist.map(x => {
-          const st = x.status || '';
-          const nm = x.name || '';
-          const nt = x.notes ? `<div class="muted">הערה: ${escapeHtml(x.notes)}</div>` : '';
-          return `<div style="padding:8px 0; border-bottom:1px solid #eee;">
-                    <b>${escapeHtml(nm)}</b> — ${escapeHtml(st)}
-                    ${nt}
-                  </div>`;
-        }).join('')
-      : '<div class="muted">אין פירוט</div>';
-
-    els.managementNotes.value = selected['הערות הנהלה'] || '';
-    els.handlingStatus.value = selected['סטטוס טיפול'] || 'פתוח';
-
-    openDrawer(true);
-  }
-
-  function openDrawer(open) {
-    els.overlay.classList.toggle('show', open);
-    els.drawer.classList.toggle('open', open);
-    els.drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
-  }
-
-  function escapeHtml(s) {
-    return String(s || '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-  }
-
-  async function saveReportUpdate() {
-    if (!selected) return;
-
-    // בשביל updateReport צריך rowNumber — אם תרצה לאפשר עדכון אמיתי,
-    // צריך שהבקאנד יחזיר _rowNumber (הוא מחזיר), אבל כאן ב-JSON שלך זה עדיין לא מוצג בטבלה.
-    // אם _rowNumber לא קיים אצלך בפועל, פשוט לא ננסה לעדכן.
-    const rowNumber = selected._rowNumber;
-    if (!rowNumber) {
-      showMsg('אין rowNumber לעדכון (תן לי צילום/דוגמת JSON מהבקאנד ואסדר)', true);
+  function renderReports(list){
+    const tb = $("reportsTbody");
+    if (!list || list.length === 0){
+      tb.innerHTML = `<tr><td colspan="7" class="muted">אין תוצאות.</td></tr>`;
       return;
     }
 
-    const payload = {
-      action: 'updateReport',
-      rowNumber,
-      managementNotes: els.managementNotes.value,
-      handlingStatus: els.handlingStatus.value
-    };
+    tb.innerHTML = list.map(r => `
+      <tr class="click" data-reportid="${String(r.reportId||"").replace(/"/g,'&quot;')}">
+        <td>${escapeHtml(String(r.date||""))}</td>
+        <td>${escapeHtml(String(r.institutionName||""))}</td>
+        <td>${escapeHtml(String(r.token||""))}</td>
+        <td>${escapeHtml(String(r.month||""))}</td>
+        <td>${escapeHtml(String(r.overallStatus||""))}</td>
+        <td><span class="pill">${escapeHtml(String(r.statusTreatment||""))}</span></td>
+        <td>${escapeHtml(String(r.summary||""))}</td>
+      </tr>
+    `).join("");
 
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+    [...tb.querySelectorAll("tr[data-reportid]")].forEach(tr=>{
+      tr.addEventListener("click", ()=> openDetails(tr.getAttribute("data-reportid")));
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s ?? "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+  }
+
+  let currentReportId = "";
+
+  async function search(){
+    try{
+      setMsg($("searchMsg"), "טוען...", "#555");
+      const { adminKey } = getAuth();
+
+      const token = $("token").value.trim();
+      const month = $("month").value.trim();
+      const statusTreatment = $("statusTreatment").value;
+
+      const res = await apiPost({
+        action:"adminSearchReports",
+        adminKey, token, month, statusTreatment,
+        limit: 100, offset: 0
       });
-      const out = await res.json();
-      if (out && out.success === false) {
-        showMsg(`שגיאה בעדכון: ${out.code || 'לא ידוע'}`, true);
-        return;
-      }
-      showMsg('נשמר ✅');
-      openDrawer(false);
-      await loadReports();
-    } catch (e) {
-      showMsg('שגיאה בשמירה (בדוק פריסה/הרשאות/CORS)', true);
+
+      if (!res.success) throw new Error(res.message || "שגיאה");
+
+      $("countLabel").textContent = `נמצאו ${res.total} תוצאות`;
+      renderReports(res.reports);
+      setMsg($("searchMsg"), "", "black");
+    } catch(e){
+      console.error(e);
+      $("countLabel").textContent = "";
+      renderReports([]);
+      setMsg($("searchMsg"), "שגיאה: " + (e.message||e), "red");
     }
   }
 
-  // events
-  els.btnReload.addEventListener('click', loadReports);
-  [els.filterInst, els.filterMonth, els.filterHandling, els.filterOverall].forEach(el => {
-    el.addEventListener('input', renderTable);
-    el.addEventListener('change', renderTable);
+  async function openDetails(reportId){
+    try{
+      setMsg($("detailsMsg"), "טוען פרטי דיווח...", "#555");
+      const { adminKey } = getAuth();
+
+      const res = await apiPost({ action:"adminGetReport", adminKey, reportId });
+      if (!res.success) throw new Error(res.message || "שגיאה");
+
+      currentReportId = reportId;
+      $("detailsCard").style.display = "block";
+      $("dReportId").textContent = reportId;
+
+      // עדכון שדות
+      const r = res.report || {};
+      $("dStatusTreatment").value = String(r["סטטוס טיפול"] || "חדש");
+      $("dNotesMgmt").value = String(r["הערות הנהלה"] || "");
+
+      // פירוט JSON
+      const details = res.details;
+      if (details) $("dJson").textContent = JSON.stringify(details, null, 2);
+      else $("dJson").textContent = String(r["פירוט"] || "");
+
+      setMsg($("detailsMsg"), "", "black");
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    } catch(e){
+      console.error(e);
+      setMsg($("detailsMsg"), "שגיאה: " + (e.message||e), "red");
+    }
+  }
+
+  async function saveDetails(){
+    try{
+      if (!currentReportId) return;
+      setMsg($("detailsMsg"), "שומר...", "#555");
+      const { adminKey } = getAuth();
+
+      const statusTreatment = $("dStatusTreatment").value;
+      const notesMgmt = $("dNotesMgmt").value;
+
+      const res = await apiPost({
+        action:"adminUpdateReport",
+        adminKey,
+        reportId: currentReportId,
+        statusTreatment,
+        notesMgmt
+      });
+
+      if (!res.success) throw new Error(res.message || "שגיאה");
+      setMsg($("detailsMsg"), "נשמר ✅", "green");
+
+      // רענון הרשימה כדי לראות סטטוס טיפול חדש
+      await search();
+    } catch(e){
+      console.error(e);
+      setMsg($("detailsMsg"), "שגיאה: " + (e.message||e), "red");
+    }
+  }
+
+  function clearFilters(){
+    $("month").value = "";
+    $("token").value = "";
+    $("statusTreatment").value = "";
+    $("countLabel").textContent = "";
+    $("reportsTbody").innerHTML = `<tr><td colspan="7" class="muted">בצע חיפוש כדי לראות תוצאות.</td></tr>`;
+    $("detailsCard").style.display = "none";
+    setMsg($("searchMsg"), "", "black");
+  }
+
+  // init
+  $("searchBtn").addEventListener("click", search);
+  $("clearBtn").addEventListener("click", clearFilters);
+  $("saveBtn").addEventListener("click", saveDetails);
+  $("closeDetailsBtn").addEventListener("click", ()=>{ $("detailsCard").style.display="none"; currentReportId=""; });
+
+  // enter to search
+  ["month","token","adminKey"].forEach(id=>{
+    $(id).addEventListener("keydown", (e)=>{ if(e.key==="Enter") search(); });
   });
-
-  els.overlay.addEventListener('click', () => openDrawer(false));
-  els.btnClose.addEventListener('click', () => openDrawer(false));
-  els.btnCancel.addEventListener('click', () => openDrawer(false));
-  els.btnSave.addEventListener('click', saveReportUpdate);
-
-  loadReports();
 </script>
+
 </body>
 </html>
