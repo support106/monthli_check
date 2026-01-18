@@ -3,575 +3,291 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>דיווח בטיחות חודשי</title>
+  <title>ניהול דיווחים</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 28px 16px; background: #eef2f3; }
-    .form-card { background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: min(540px, 100%); }
-    .row { text-align:right; margin: 10px 0; }
-    .btn { width: 100%; padding: 12px; border-radius: 10px; border: 0; cursor: pointer; font-weight: 700; }
-    .btn-primary { background: #1f7ae0; color: #fff; }
-    .btn-primary:hover { filter: brightness(0.95); }
-    .btn-secondary { background: #f1f3f5; color: #222; border: 1px solid #ddd; }
-    .btn-danger { background: #d9534f; color: #fff; }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    input, textarea, select { width: 100%; margin: 10px 0 0; padding: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
-
-    .msg { font-size: 14px; margin-top: 10px; min-height: 18px; text-align:center; }
-    .section { text-align:right; background:#f7f7f7; padding:12px; border-radius:10px; margin: 12px 0; display:none; }
-    .reports { text-align:right; background:#fff; padding:12px; border-radius:10px; margin-top:16px; display:none; }
+    body { font-family: sans-serif; background:#eef2f3; padding: 18px; }
+    .card { background:#fff; border-radius:12px; padding:16px; box-shadow:0 4px 15px rgba(0,0,0,0.08); max-width: 980px; margin: 0 auto 14px; }
+    h2 { margin: 0 0 10px; }
+    input, select, textarea, button { width:100%; box-sizing:border-box; padding:10px; border-radius:10px; border:1px solid #ccc; }
+    textarea { resize: vertical; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .btn { border:0; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:800; }
+    .btn-primary { background:#1f7ae0; color:#fff; }
+    .btn-secondary { background:#f1f3f5; color:#222; border:1px solid #ddd; }
+    .btn-danger { background:#d9534f; color:#fff; }
+    .btn:disabled { opacity:0.6; cursor:not-allowed; }
+    .msg { min-height:18px; font-size:13px; margin-top:8px; }
     table { width:100%; border-collapse:collapse; font-size:13px; }
-    th, td { padding:8px 6px; border-bottom:1px solid #eee; vertical-align: top; }
+    th, td { padding:8px 6px; border-bottom:1px solid #eee; vertical-align:top; }
     th { border-bottom:1px solid #ddd; white-space:nowrap; }
     .muted { color:#666; }
-
-    /* Modal */
-    .overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.45);
-      display: none; align-items: center; justify-content: center;
-      padding: 16px;
-      z-index: 1000;
-    }
-    .modal {
-      width: min(720px, 100%);
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-      overflow: hidden;
-      text-align: right;
-    }
-    .modal-header {
-      padding: 14px 16px;
-      background: #0f172a;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .modal-title { font-weight: 800; font-size: 15px; }
-    .modal-close {
-      background: transparent; border: 0; color: #fff; font-size: 18px; cursor: pointer;
-      padding: 6px 10px; border-radius: 10px;
-    }
-    .modal-close:hover { background: rgba(255,255,255,0.12); }
-    .modal-body { padding: 16px; }
-    .modal-footer {
-      padding: 14px 16px;
-      background: #f8fafc;
-      border-top: 1px solid #e5e7eb;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    /* Wizard */
-    .progress-wrap { margin: 8px 0 14px; }
-    .progress-bar {
-      height: 10px;
-      background: #e5e7eb;
-      border-radius: 999px;
-      overflow: hidden;
-    }
-    .progress-bar > div {
-      height: 100%;
-      width: 0%;
-      background: #22c55e;
-      transition: width 200ms ease;
-    }
-    .q-meta { display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom: 8px; }
-    .q-counter { font-size: 13px; color:#334155; }
-    .q-text { font-size: 16px; font-weight: 800; color:#0f172a; margin: 8px 0 10px; }
-    .answer-row { display:flex; gap:10px; flex-wrap: wrap; }
-    .pill {
-      flex: 1 1 140px;
-      border: 1px solid #cbd5e1;
-      background: #fff;
-      border-radius: 12px;
-      padding: 10px 12px;
-      cursor: pointer;
-      font-weight: 700;
-      text-align: center;
-      user-select: none;
-    }
-    .pill.active { border-color: #1f7ae0; box-shadow: 0 0 0 3px rgba(31,122,224,0.18); }
-    .pill.ok.active { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
-    .pill.bad.active { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.18); }
-    .pill.na.active { border-color: #64748b; box-shadow: 0 0 0 3px rgba(100,116,139,0.18); }
-
-    .explain { display:none; margin-top: 10px; }
-    .explain textarea { margin-top: 6px; }
-
-    .footer-left, .footer-right { display:flex; gap:10px; align-items:center; }
-    .mini { font-size: 12px; color:#475569; }
+    .pill { display:inline-block; padding:3px 8px; border-radius:999px; background:#f1f5f9; border:1px solid #e2e8f0; font-size:12px; }
+    .click { cursor:pointer; }
+    .details { background:#0b1220; color:#e5e7eb; padding:12px; border-radius:12px; overflow:auto; max-height: 360px; }
   </style>
 </head>
 <body>
 
-<div class="form-card">
-  <h2 style="margin:0 0 6px;">דיווח בטיחות חודשי 🧾</h2>
-  <div class="muted" style="margin-bottom: 10px;">טעינת מוסד + דיווחים קודמים</div>
+<div class="card">
+  <h2>דף ניהול</h2>
 
-  <input type="text" id="token" placeholder="סמל מוסד" readonly />
+  <div class="grid2">
+    <div>
+      <label class="muted">API URL</label>
+      <input id="apiUrl" value="https://script.google.com/macros/s/AKfycbyQzzyIQgQeUQzMuFATMawQzzjDqH9-WGxpCgORVGRc5s5cRgrWYHkA9osVt-Urd9Ew/exec" />
+    </div>
+    <div>
+      <label class="muted">מפתח ניהול (ADMIN_KEY)</label>
+      <input id="adminKey" placeholder="הדבק מפתח ניהול" />
+    </div>
+  </div>
 
-  <div id="instBox" class="section"></div>
+  <div class="msg" id="topMsg"></div>
+</div>
 
-  <button class="btn btn-primary" id="openWizardBtn" disabled>שליחת דיווח</button>
+<div class="card">
+  <div class="grid">
+    <div>
+      <label class="muted">חודש (YYYY-MM)</label>
+      <input id="month" placeholder="למשל 2026-01" />
+    </div>
+    <div>
+      <label class="muted">טוקן</label>
+      <input id="token" placeholder="למשל 12345" />
+    </div>
+    <div>
+      <label class="muted">סטטוס טיפול</label>
+      <select id="statusTreatment">
+        <option value="">הכל</option>
+        <option value="חדש">חדש</option>
+        <option value="בטיפול">בטיפול</option>
+        <option value="טופל">טופל</option>
+      </select>
+    </div>
+  </div>
 
-  <div id="responseMsg" class="msg"></div>
+  <div class="row" style="margin-top:10px;">
+    <button class="btn btn-primary" id="searchBtn">חפש</button>
+    <button class="btn btn-secondary" id="clearBtn">נקה פילטרים</button>
+    <span class="muted" id="countLabel"></span>
+  </div>
 
-  <div id="reportsBox" class="reports">
-    <div style="font-weight:800; margin-bottom:10px;">דיווחים קודמים</div>
-    <div id="reportsContent"></div>
+  <div class="msg" id="searchMsg"></div>
+
+  <div style="overflow:auto; margin-top:10px;">
+    <table>
+      <thead>
+        <tr>
+          <th>תאריך</th>
+          <th>מוסד</th>
+          <th>טוקן</th>
+          <th>חודש</th>
+          <th>סטטוס כללי</th>
+          <th>סטטוס טיפול</th>
+          <th>סיכום</th>
+        </tr>
+      </thead>
+      <tbody id="reportsTbody">
+        <tr><td colspan="7" class="muted">בצע חיפוש כדי לראות תוצאות.</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
-<!-- Modal Wizard -->
-<div class="overlay" id="wizardOverlay" aria-hidden="true">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="wizardTitle">
-    <div class="modal-header">
-      <div class="modal-title" id="wizardTitle">דיווח חודשי</div>
-      <button class="modal-close" id="wizardCloseBtn" title="סגור">✕</button>
+<div class="card" id="detailsCard" style="display:none;">
+  <h2 style="margin-bottom:8px;">פרטי דיווח</h2>
+  <div class="grid2">
+    <div>
+      <div class="muted">ReportId</div>
+      <div id="dReportId" class="pill"></div>
     </div>
-
-    <div class="modal-body">
-      <div class="progress-wrap">
-        <div class="q-meta">
-          <div class="q-counter" id="qCounter">שאלה 1 מתוך 25</div>
-          <div class="mini" id="monthLabel"></div>
-        </div>
-        <div class="progress-bar"><div id="progressFill"></div></div>
-      </div>
-
-      <div class="q-text" id="qText"></div>
-
-      <div class="answer-row">
-        <div class="pill ok" id="pillOk">תקין ✅</div>
-        <div class="pill bad" id="pillBad">תקול ❌</div>
-        <div class="pill na" id="pillNa">לא קיים ➖</div>
-      </div>
-
-      <div class="explain" id="explainBox">
-        <div class="mini">נדרש הסבר (חובה כאשר “תקול”)</div>
-        <textarea id="explainText" rows="3" placeholder="תאר בקצרה מה התקלה / מה חסר..."></textarea>
-      </div>
-
-      <div class="mini" style="margin-top:12px;">
-        טיפ: אפשר לדווח מהר — בחר סטטוס והשאלה תעבור אוטומטית (אם “תקול” תידרש להסבר).
-      </div>
+    <div>
+      <div class="muted">סטטוס טיפול</div>
+      <select id="dStatusTreatment">
+        <option value="חדש">חדש</option>
+        <option value="בטיפול">בטיפול</option>
+        <option value="טופל">טופל</option>
+      </select>
     </div>
+  </div>
 
-    <div class="modal-footer">
-      <div class="footer-left">
-        <button class="btn btn-secondary" id="prevBtn" style="width:auto; padding:10px 14px;">הקודם</button>
-        <button class="btn btn-secondary" id="nextBtn" style="width:auto; padding:10px 14px;">הבא</button>
-      </div>
+  <div style="margin-top:10px;">
+    <div class="muted">הערות הנהלה</div>
+    <textarea id="dNotesMgmt" rows="3" placeholder="הערות פנימיות..."></textarea>
+  </div>
 
-      <div class="footer-right">
-        <span class="mini" id="wizardHint"></span>
-        <button class="btn btn-primary" id="submitWizardBtn" style="width:auto; padding:10px 16px;">שלח דיווח</button>
-      </div>
-    </div>
+  <div class="row" style="margin-top:10px;">
+    <button class="btn btn-primary" id="saveBtn">שמור עדכון</button>
+    <button class="btn btn-secondary" id="closeDetailsBtn">סגור</button>
+    <div class="msg" id="detailsMsg" style="flex:1;"></div>
+  </div>
+
+  <div style="margin-top:10px;">
+    <div class="muted">פירוט (JSON / שאלות)</div>
+    <pre class="details" id="dJson"></pre>
   </div>
 </div>
 
 <script>
-  // ================= CONFIG =================
-  const API_URL = "https://script.google.com/macros/s/AKfycbyQzzyIQgQeUQzMuFATMawQzzjDqH9-WGxpCgORVGRc5s5cRgrWYHkA9osVt-Urd9Ew/exec";
+  function $(id){ return document.getElementById(id); }
 
-  // 25 שאלות לדוגמה (החלף למה שאתה רוצה)
-  const QUESTIONS = [
-    "תקינות מטפי כיבוי אש במסדרונות",
-    "שילוט יציאה וחירום תקין ובולט",
-    "תיק עזרה ראשונה מלא ונגיש",
-    "מערכת אזעקה/כריזה תקינה",
-    "דלתות חירום נפתחות ותקינות",
-    "מעקות תקינים במדרגות",
-    "ריצוף ללא מפגעים/שברים",
-    "תאורת חירום תקינה",
-    "לוח חשמל סגור ונעול",
-    "כבלי חשמל/מאריכים מסודרים",
-    "חומרי ניקוי מאוחסנים במקום סגור",
-    "ברזי כיבוי/גלגלונים תקינים",
-    "חלונות תקינים ללא סיכון",
-    "חצר/מתקנים ללא מפגעים",
-    "הצללה/גדרות בחצר תקינות",
-    "ניקיון כללי וסדר במרחב",
-    "שירותים תקינים ונקיים",
-    "נגישות – מעברים פנויים",
-    "תקינות גלאי עשן (אם קיימים)",
-    "תקינות מצלמות (אם קיימות)",
-    "תיק בטיחות/מסמכים מעודכנים",
-    "מעבר חופשי ליד יציאות",
-    "ארונות/מדפים מקובעים לקיר",
-    "אין חומרים מסוכנים גלויים",
-    "בדיקת סיכום – אין אירועים חריגים"
-  ];
-
-  // ================= HELPERS =================
-  function setMsg(text, color) {
-    const msg = document.getElementById("responseMsg");
-    msg.style.color = color || "black";
-    msg.innerText = text || "";
+  function setMsg(el, text, color){
+    el.style.color = color || "black";
+    el.textContent = text || "";
   }
 
-  function getTokenFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    return (params.get("token") || "").trim();
-  }
-
-  function escapeHtml(s) {
-    return String(s ?? "")
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-  function formatDate(d) {
-    const dt = new Date(d);
-    if (isNaN(dt.getTime())) return String(d || "");
-    return dt.toLocaleString("he-IL");
-  }
-
-  // POST helper (נמנע מכותרות כדי להימנע מ-preflight)
-  async function apiPost(payload) {
-    const resp = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
+  async function apiPost(payload){
+    const url = $("apiUrl").value.trim();
+    const resp = await fetch(url, { method:"POST", body: JSON.stringify(payload) });
     const text = await resp.text();
-    try { return JSON.parse(text); }
-    catch { return { success: false, result: "error", message: "Bad JSON from server", raw: text }; }
+    try { return JSON.parse(text); } catch { return { success:false, result:"error", message:"Bad JSON", raw:text }; }
   }
 
-  function getMonthKey() {
-    // YYYY-MM
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    return `${y}-${m}`;
+  function getAuth(){
+    const adminKey = $("adminKey").value.trim();
+    if (!adminKey) throw new Error("חסר מפתח ניהול");
+    return { adminKey };
   }
 
-  // ================= RENDER =================
-  function showInstitution(inst) {
-    const box = document.getElementById("instBox");
-    box.style.display = "block";
-    box.innerHTML = `
-      <div><b>שם מוסד:</b> ${escapeHtml(inst["שם מוסד"] || "")}</div>
-      <div><b>כתובת:</b> ${escapeHtml(inst["כתובת"] || "")}</div>
-      <div><b>סוג:</b> ${escapeHtml(inst["סוג"] || "")}</div>
-      <div><b>איש קשר:</b> ${escapeHtml(inst["איש קשר"] || "")}</div>
-      <div><b>טלפון:</b> ${escapeHtml(inst["טלפון"] || "")}</div>
-      <div><b>Email1:</b> ${escapeHtml(inst["Email1"] || "")}</div>
-      <div><b>Email2:</b> ${escapeHtml(inst["Email2"] || "")}</div>
-    `;
-  }
-
-  function showReports(reports) {
-    const box = document.getElementById("reportsBox");
-    const content = document.getElementById("reportsContent");
-    box.style.display = "block";
-
-    if (!reports || reports.length === 0) {
-      content.innerHTML = `<div class="muted">אין דיווחים קודמים למוסד זה.</div>`;
+  function renderReports(list){
+    const tb = $("reportsTbody");
+    if (!list || list.length === 0){
+      tb.innerHTML = `<tr><td colspan="7" class="muted">אין תוצאות.</td></tr>`;
       return;
     }
 
-    const rowsHtml = reports.map(r => `
-      <tr>
-        <td>${escapeHtml(formatDate(r["תאריך"]))}</td>
-        <td>${escapeHtml(r["חודש"] || "")}</td>
-        <td>${escapeHtml(r["סטטוס כללי"] || "")}</td>
-        <td>${escapeHtml(r["סטטוס טיפול"] || "")}</td>
-        <td>${escapeHtml(r["פירוט מקוצר"] || (r["פירוט"] || ""))}</td>
+    tb.innerHTML = list.map(r => `
+      <tr class="click" data-reportid="${String(r.reportId||"").replace(/"/g,'&quot;')}">
+        <td>${escapeHtml(String(r.date||""))}</td>
+        <td>${escapeHtml(String(r.institutionName||""))}</td>
+        <td>${escapeHtml(String(r.token||""))}</td>
+        <td>${escapeHtml(String(r.month||""))}</td>
+        <td>${escapeHtml(String(r.overallStatus||""))}</td>
+        <td><span class="pill">${escapeHtml(String(r.statusTreatment||""))}</span></td>
+        <td>${escapeHtml(String(r.summary||""))}</td>
       </tr>
     `).join("");
 
-    content.innerHTML = `
-      <div style="overflow:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>תאריך</th>
-              <th>חודש</th>
-              <th>סטטוס כללי</th>
-              <th>סטטוס טיפול</th>
-              <th>פירוט</th>
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  // ================= WIZARD STATE =================
-  const Wizard = {
-    isOpen: false,
-    idx: 0,
-    answers: [], // {qIndex, question, status, explanation}
-    month: getMonthKey(),
-    institution: null, // נשמור כאן כדי לשלוח שם מוסד אם רוצים
-  };
-
-  function initWizardState() {
-    Wizard.idx = 0;
-    Wizard.answers = QUESTIONS.map((q, i) => ({
-      qIndex: i,
-      question: q,
-      status: "",       // "תקין" | "תקול" | "לא קיים"
-      explanation: ""   // חובה אם תקול
-    }));
-    Wizard.month = getMonthKey();
-  }
-
-  function openWizard() {
-    if (Wizard.isOpen) return;
-    initWizardState();
-    Wizard.isOpen = true;
-    document.getElementById("wizardOverlay").style.display = "flex";
-    document.getElementById("wizardOverlay").setAttribute("aria-hidden", "false");
-    document.getElementById("monthLabel").innerText = `חודש דיווח: ${Wizard.month}`;
-    renderWizard();
-  }
-
-  function closeWizard() {
-    Wizard.isOpen = false;
-    document.getElementById("wizardOverlay").style.display = "none";
-    document.getElementById("wizardOverlay").setAttribute("aria-hidden", "true");
-    setWizardHint("");
-  }
-
-  function setWizardHint(t) {
-    document.getElementById("wizardHint").innerText = t || "";
-  }
-
-  function renderWizard() {
-    const total = QUESTIONS.length;
-    const i = Wizard.idx;
-    const a = Wizard.answers[i];
-
-    document.getElementById("qCounter").innerText = `שאלה ${i + 1} מתוך ${total}`;
-    document.getElementById("qText").innerText = a.question;
-
-    const pct = Math.round(((i) / total) * 100);
-    document.getElementById("progressFill").style.width = `${pct}%`;
-
-    // pills state
-    const ok = document.getElementById("pillOk");
-    const bad = document.getElementById("pillBad");
-    const na = document.getElementById("pillNa");
-    [ok, bad, na].forEach(el => el.classList.remove("active"));
-
-    if (a.status === "תקין") ok.classList.add("active");
-    if (a.status === "תקול") bad.classList.add("active");
-    if (a.status === "לא קיים") na.classList.add("active");
-
-    // explain
-    const explainBox = document.getElementById("explainBox");
-    const explainText = document.getElementById("explainText");
-    explainText.value = a.explanation || "";
-
-    if (a.status === "תקול") {
-      explainBox.style.display = "block";
-    } else {
-      explainBox.style.display = "none";
-    }
-
-    // nav buttons
-    document.getElementById("prevBtn").disabled = (i === 0);
-    document.getElementById("nextBtn").disabled = (i === total - 1);
-
-    // submit visible/enable logic
-    const canSubmit = Wizard.answers.every(x => x.status && (x.status !== "תקול" || (x.explanation || "").trim().length > 0));
-    document.getElementById("submitWizardBtn").disabled = !canSubmit;
-
-    if (!canSubmit) {
-      setWizardHint("כדי לשלוח: יש לענות על כל השאלות (ובהגדרת תקול – חובה הסבר).");
-    } else {
-      setWizardHint("מוכן לשליחה ✅");
-    }
-  }
-
-  function setAnswer(status) {
-    const a = Wizard.answers[Wizard.idx];
-    a.status = status;
-
-    // אם עברו לתקין/לא קיים - נקה הסבר (אופציונלי)
-    if (status !== "תקול") {
-      a.explanation = "";
-      document.getElementById("explainText").value = "";
-    }
-
-    renderWizard();
-
-    // מעבר אוטומטי לשאלה הבאה רק אם לא תקול
-    // אם תקול - נותנים הזדמנות לכתוב הסבר
-    if (status !== "תקול") {
-      autoNext();
-    }
-  }
-
-  function autoNext() {
-    if (Wizard.idx < QUESTIONS.length - 1) {
-      Wizard.idx += 1;
-      renderWizard();
-    }
-  }
-
-  function prevQ() {
-    if (Wizard.idx > 0) {
-      Wizard.idx -= 1;
-      renderWizard();
-    }
-  }
-
-  function nextQ() {
-    if (Wizard.idx < QUESTIONS.length - 1) {
-      Wizard.idx += 1;
-      renderWizard();
-    }
-  }
-
-  // ================= COMPUTE REPORT =================
-  function computeOverallStatus(answers) {
-    // אם יש לפחות תקול אחד -> "לא תקין"
-    // אחרת אם כולם "לא קיים" -> "לא קיים"
-    // אחרת -> "תקין"
-    const hasBad = answers.some(a => a.status === "תקול");
-    if (hasBad) return "לא תקין";
-    const allNA = answers.every(a => a.status === "לא קיים");
-    if (allNA) return "לא קיים";
-    return "תקין";
-  }
-
-  function compactSummary(answers) {
-    // סיכום קצר להצגה בטבלה: כמה תקין/תקול/לא קיים
-    const c = { ok:0, bad:0, na:0 };
-    answers.forEach(a => {
-      if (a.status === "תקין") c.ok++;
-      else if (a.status === "תקול") c.bad++;
-      else if (a.status === "לא קיים") c.na++;
+    [...tb.querySelectorAll("tr[data-reportid]")].forEach(tr=>{
+      tr.addEventListener("click", ()=> openDetails(tr.getAttribute("data-reportid")));
     });
-    return `תקין: ${c.ok}, תקול: ${c.bad}, לא קיים: ${c.na}`;
   }
 
-  // ================= LOAD DATA =================
-  async function loadInstitutionAndReports(token) {
-    const instRes = await apiPost({ action: "getInstitution", token });
-    if (!instRes || !instRes.success) throw new Error(instRes?.message || "Institution not found");
-    Wizard.institution = instRes.institution;
-    showInstitution(instRes.institution);
-
-    const repRes = await apiPost({ action: "getReports", token, limit: 50 });
-    if (repRes && repRes.success) showReports(repRes.reports);
-    else showReports([]);
+  function escapeHtml(s){
+    return String(s ?? "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
   }
 
-  // ================= SUBMIT REPORT =================
-  async function submitWizard() {
-    const token = document.getElementById("token").value.trim();
-    if (!token) {
-      setMsg("חסר token בכתובת.", "red");
-      return;
-    }
+  let currentReportId = "";
 
-    // ולידציה
-    const missing = Wizard.answers.find(a => !a.status || (a.status === "תקול" && !(a.explanation || "").trim()));
-    if (missing) {
-      setWizardHint("יש להשלים את כל השאלות. בתקול חובה הסבר.");
-      return;
-    }
+  async function search(){
+    try{
+      setMsg($("searchMsg"), "טוען...", "#555");
+      const { adminKey } = getAuth();
 
-    const overall = computeOverallStatus(Wizard.answers);
-    const month = Wizard.month;
-    const instName = Wizard.institution?.["שם מוסד"] || "";
+      const token = $("token").value.trim();
+      const month = $("month").value.trim();
+      const statusTreatment = $("statusTreatment").value;
 
-    // payload שמוכן לעתיד: details כ-JSON מלא
-    const payload = {
-      token,
-      institutionName: instName,
-      month,
-      overallStatus: overall,
-      details: Wizard.answers,               // אובייקט/מערך → יישמר כ-JSON בבאקאנד
-      detailsSummary: compactSummary(Wizard.answers) // סיכום קצר להצגה
-    };
+      const res = await apiPost({
+        action:"adminSearchReports",
+        adminKey, token, month, statusTreatment,
+        limit: 100, offset: 0
+      });
 
-    // UI
-    document.getElementById("submitWizardBtn").disabled = true;
-    setWizardHint("שולח...");
+      if (!res.success) throw new Error(res.message || "שגיאה");
 
-    try {
-      const res = await apiPost({ action: "submitMonthlyReport", ...payload });
-
-      if (res?.result === "success") {
-        setMsg("הדיווח נשמר בהצלחה ✅", "green");
-        closeWizard();
-        await loadInstitutionAndReports(token); // רענון רשימת דיווחים
-      } else {
-        setWizardHint("שגיאה: " + (res?.message || "לא ידוע"));
-        document.getElementById("submitWizardBtn").disabled = false;
-      }
-    } catch (e) {
+      $("countLabel").textContent = `נמצאו ${res.total} תוצאות`;
+      renderReports(res.reports);
+      setMsg($("searchMsg"), "", "black");
+    } catch(e){
       console.error(e);
-      setWizardHint("שגיאה בשליחה.");
-      document.getElementById("submitWizardBtn").disabled = false;
+      $("countLabel").textContent = "";
+      renderReports([]);
+      setMsg($("searchMsg"), "שגיאה: " + (e.message||e), "red");
     }
   }
 
-  // ================= INIT =================
-  window.addEventListener("DOMContentLoaded", async () => {
-    const token = getTokenFromUrl();
-    document.getElementById("token").value = token;
+  async function openDetails(reportId){
+    try{
+      setMsg($("detailsMsg"), "טוען פרטי דיווח...", "#555");
+      const { adminKey } = getAuth();
 
-    const openBtn = document.getElementById("openWizardBtn");
-    openBtn.addEventListener("click", openWizard);
+      const res = await apiPost({ action:"adminGetReport", adminKey, reportId });
+      if (!res.success) throw new Error(res.message || "שגיאה");
 
-    // modal controls
-    document.getElementById("wizardCloseBtn").addEventListener("click", closeWizard);
-    document.getElementById("wizardOverlay").addEventListener("click", (e) => {
-      if (e.target.id === "wizardOverlay") closeWizard();
-    });
+      currentReportId = reportId;
+      $("detailsCard").style.display = "block";
+      $("dReportId").textContent = reportId;
 
-    document.getElementById("prevBtn").addEventListener("click", prevQ);
-    document.getElementById("nextBtn").addEventListener("click", nextQ);
+      // עדכון שדות
+      const r = res.report || {};
+      $("dStatusTreatment").value = String(r["סטטוס טיפול"] || "חדש");
+      $("dNotesMgmt").value = String(r["הערות הנהלה"] || "");
 
-    document.getElementById("pillOk").addEventListener("click", () => setAnswer("תקין"));
-    document.getElementById("pillBad").addEventListener("click", () => setAnswer("תקול"));
-    document.getElementById("pillNa").addEventListener("click", () => setAnswer("לא קיים"));
+      // פירוט JSON
+      const details = res.details;
+      if (details) $("dJson").textContent = JSON.stringify(details, null, 2);
+      else $("dJson").textContent = String(r["פירוט"] || "");
 
-    document.getElementById("explainText").addEventListener("input", (e) => {
-      const a = Wizard.answers[Wizard.idx];
-      a.explanation = e.target.value;
-      renderWizard();
-    });
-
-    document.getElementById("submitWizardBtn").addEventListener("click", submitWizard);
-
-    // keyboard (אופציונלי)
-    document.addEventListener("keydown", (e) => {
-      if (!Wizard.isOpen) return;
-      if (e.key === "Escape") closeWizard();
-      if (e.key === "ArrowLeft") nextQ();
-      if (e.key === "ArrowRight") prevQ();
-    });
-
-    if (!token) {
-      setMsg("חסר פרמטר token בכתובת. לדוגמה: ?token=12345", "red");
-      openBtn.disabled = true;
-      return;
+      setMsg($("detailsMsg"), "", "black");
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    } catch(e){
+      console.error(e);
+      setMsg($("detailsMsg"), "שגיאה: " + (e.message||e), "red");
     }
+  }
 
-    try {
-      openBtn.disabled = true;
-      await loadInstitutionAndReports(token);
-      openBtn.disabled = false;
-      setMsg("", "black");
-    } catch (err) {
-      console.error(err);
-      setMsg("שגיאה בשליפת נתוני מוסד/דיווחים: " + (err?.message || err), "red");
-      openBtn.disabled = true;
+  async function saveDetails(){
+    try{
+      if (!currentReportId) return;
+      setMsg($("detailsMsg"), "שומר...", "#555");
+      const { adminKey } = getAuth();
+
+      const statusTreatment = $("dStatusTreatment").value;
+      const notesMgmt = $("dNotesMgmt").value;
+
+      const res = await apiPost({
+        action:"adminUpdateReport",
+        adminKey,
+        reportId: currentReportId,
+        statusTreatment,
+        notesMgmt
+      });
+
+      if (!res.success) throw new Error(res.message || "שגיאה");
+      setMsg($("detailsMsg"), "נשמר ✅", "green");
+
+      // רענון הרשימה כדי לראות סטטוס טיפול חדש
+      await search();
+    } catch(e){
+      console.error(e);
+      setMsg($("detailsMsg"), "שגיאה: " + (e.message||e), "red");
     }
+  }
+
+  function clearFilters(){
+    $("month").value = "";
+    $("token").value = "";
+    $("statusTreatment").value = "";
+    $("countLabel").textContent = "";
+    $("reportsTbody").innerHTML = `<tr><td colspan="7" class="muted">בצע חיפוש כדי לראות תוצאות.</td></tr>`;
+    $("detailsCard").style.display = "none";
+    setMsg($("searchMsg"), "", "black");
+  }
+
+  // init
+  $("searchBtn").addEventListener("click", search);
+  $("clearBtn").addEventListener("click", clearFilters);
+  $("saveBtn").addEventListener("click", saveDetails);
+  $("closeDetailsBtn").addEventListener("click", ()=>{ $("detailsCard").style.display="none"; currentReportId=""; });
+
+  // enter to search
+  ["month","token","adminKey"].forEach(id=>{
+    $(id).addEventListener("keydown", (e)=>{ if(e.key==="Enter") search(); });
   });
 </script>
 
